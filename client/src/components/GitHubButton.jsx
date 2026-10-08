@@ -4,7 +4,7 @@ const GITHUB_ICON = (
   </svg>
 );
 
-export default function GitHubButton({ clientId, text = 'Continue with GitHub', onError, onTrigger }) {
+export default function GitHubButton({ clientId, text = 'Continue with GitHub', onError }) {
   if (!clientId) {
     return (
       <button
@@ -18,12 +18,8 @@ export default function GitHubButton({ clientId, text = 'Continue with GitHub', 
     );
   }
 
-  const handleClick = () => {
-    if (onTrigger) onTrigger();
-  };
-
   return (
-    <a href="/api/auth/github" className="btn block github" onClick={handleClick}>
+    <a href="/api/auth/github" className="btn block github">
       {GITHUB_ICON}
       <span>{text}</span>
     </a>

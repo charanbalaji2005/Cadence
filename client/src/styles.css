@@ -52,7 +52,14 @@ main{flex:1;display:flex;flex-direction:column}
 /* Header */
 .top{display:flex;align-items:center;gap:1.25rem;padding:1.9rem 0 .5rem}
 .brand{display:flex;align-items:center;gap:.7rem;text-decoration:none;color:var(--text)}
-.brand-mark{width:46px;height:34px;color:var(--accent);flex:none}
+.brand-mark{width:40px;height:40px;color:var(--text);flex:none}
+.brand:hover .cadence-svg{transform:scale(1.08) rotate(-4deg)}
+.cadence-caret-blink{animation:cadenceBlink 1s ease-in-out infinite}
+.cadence-spin{animation:cadenceSpin 1.4s linear infinite}
+.cadence-ring-pulse{animation:cadencePulse 3s ease-in-out infinite}
+@keyframes cadenceBlink{0%,100%{opacity:1;transform:scaleY(1)}50%{opacity:.2;transform:scaleY(.92)}}
+@keyframes cadenceSpin{to{transform:rotate(360deg)}}
+@keyframes cadencePulse{0%,100%{stroke-opacity:.75}50%{stroke-opacity:1}}
 .wordmark{display:flex;flex-direction:column;line-height:1}
 .wordmark small{font-size:.66rem;color:var(--sub);margin-bottom:.15rem}
 .wordmark strong{font-size:1.85rem;font-weight:600;letter-spacing:-.035em}
