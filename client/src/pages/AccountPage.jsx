@@ -44,7 +44,7 @@ export default function AccountPage() {
         <Avatar name={u.username} url={u.avatar} size="lg" />
         <div>
           <h1>{u.username}</h1>
-          <p>{u.email}{u.createdAt ? `, joined ${fmtDate(u.createdAt)}` : ''}{u.provider === 'google' ? ', Google account' : ''}</p>
+          <p>{u.email}{u.createdAt ? `, joined ${fmtDate(u.createdAt)}` : ''}{u.provider === 'google' ? ', Google account' : u.provider === 'github' ? ', GitHub account' : ''}</p>
           <p><ShieldCheck size="1em" style={{ verticalAlign: '-2px' }} /> {session}</p>
         </div>
         <div className="actions">

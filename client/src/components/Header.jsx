@@ -28,9 +28,9 @@ export default function Header({ onBrand }) {
 
   return (
     <header className="top">
-      <Link className="brand" to="/" onClick={onBrand} aria-label="TypeFlow, go to the typing test">
-        <Logo />
-        <span className="wordmark"><small>keep the rhythm</small><strong>typeflow</strong></span>
+      <Link className="brand" to="/" onClick={onBrand} aria-label="Cadence, go to the typing test">
+        <Logo size={34} />
+        <span className="wordmark"><small>keep the rhythm</small><strong>cadence</strong></span>
       </Link>
       <nav className="nav" aria-label="Main">
         {NAV.map(([to, Icon, label]) => (

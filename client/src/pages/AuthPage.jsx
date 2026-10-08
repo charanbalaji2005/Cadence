@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, History, Crown, Target, ShieldCheck, ArrowBigUpDash } from 'lucide-react';
 import GoogleButton from '../components/GoogleButton.jsx';
+import GitHubButton from '../components/GitHubButton.jsx';
+import AuthLoadingModal from '../components/AuthLoadingModal.jsx';
 import TypingDemo from '../components/TypingDemo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
@@ -53,7 +55,13 @@ export default function AuthPage({ mode }) {
   const rememberRef = useRef(remember);
   rememberRef.current = remember;
   const firstRef = useRef(null);
+  const [searchParams] = useSearchParams();
   const capsOn = ui.caps && settings.capsWarning;
+
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err) setMsg({ text: err, info: false });
+  }, [searchParams]);
 
   useEffect(() => { setMsg(null); setInvalid(null); if (!isTouch()) setTimeout(() => firstRef.current?.focus(), 50); }, [mode]);
   useEffect(() => {
@@ -70,12 +78,26 @@ export default function AuthPage({ mode }) {
 
   if (auth.ready && auth.user) return <Navigate to="/" replace />;
 
+  const [loadingOverlay, setLoadingOverlay] = useState({
+    isOpen: false,
+    mode: 'login',
+    isSuccess: false,
+    username: ''
+  });
+
   const set = k => v => setF(s => ({ ...s, [k]: v }));
   const fail = (text, field) => { setMsg({ text }); setInvalid(field || null); };
   const done = d => {
-    const moved = d.imported ? ` ${d.imported} guest result${d.imported === 1 ? ' was' : 's were'} moved to your account.` : '';
-    ui.toast((reg || d.created ? `Account created. Welcome, ${d.user.username}.` : `Signed in as ${d.user.username}.`) + moved);
-    nav('/', { replace: true });
+    setLoadingOverlay(s => ({
+      ...s,
+      isSuccess: true,
+      username: d.user?.username || ''
+    }));
+    setTimeout(() => {
+      const moved = d.imported ? ` ${d.imported} guest result${d.imported === 1 ? ' was' : 's were'} moved to your account.` : '';
+      ui.toast((reg || d.created ? `Account created. Welcome, ${d.user.username}.` : `Signed in as ${d.user.username}.`) + moved);
+      nav('/', { replace: true });
+    }, 850);
   };
   const submit = async e => {
     e.preventDefault();
@@ -91,17 +113,45 @@ export default function AuthPage({ mode }) {
       if (!f.password) return fail('Enter your password.', 'password');
     }
     setBusy(true); setMsg(null);
+    setLoadingOverlay({
+      isOpen: true,
+      mode: reg ? 'register' : 'login',
+      isSuccess: false,
+      username: ''
+    });
     try {
       const d = reg ? await auth.register({ username: f.username.trim(), email, password: f.password, remember }) : await auth.login({ email, password: f.password, remember });
       done(d);
-    } catch (err) { fail(err.message); }
+    } catch (err) {
+      setLoadingOverlay({ isOpen: false, mode: reg ? 'register' : 'login', isSuccess: false, username: '' });
+      fail(err.message);
+    }
     finally { setBusy(false); }
   };
   const onGoogle = async credential => {
     setBusy(true); setMsg(null);
-    try { done(await auth.google(credential, rememberRef.current)); }
-    catch (err) { fail(err.message); }
+    setLoadingOverlay({
+      isOpen: true,
+      mode: 'google',
+      isSuccess: false,
+      username: ''
+    });
+    try {
+      const d = await auth.google(credential, rememberRef.current);
+      done(d);
+    } catch (err) {
+      setLoadingOverlay({ isOpen: false, mode: 'google', isSuccess: false, username: '' });
+      fail(err.message);
+    }
     finally { setBusy(false); }
+  };
+  const onGitHub = () => {
+    setLoadingOverlay({
+      isOpen: true,
+      mode: 'github',
+      isSuccess: false,
+      username: ''
+    });
   };
   const score = pwScore(f.password);
 
@@ -121,7 +171,10 @@ export default function AuthPage({ mode }) {
         <div className="auth-main">
           <h1>{reg ? 'Create your account' : 'Welcome back'}</h1>
           <p className="sub">{reg ? 'Free, and takes less than a minute.' : 'Log in to save results and climb the leaderboard.'}</p>
-          <GoogleButton clientId={auth.googleClientId} text={reg ? 'signup_with' : 'continue_with'} onCredential={onGoogle} onError={t => fail(t)} />
+          <div className="oauth-stack">
+            <GoogleButton clientId={auth.googleClientId} text={reg ? 'signup_with' : 'continue_with'} onCredential={onGoogle} onError={t => fail(t)} />
+            <GitHubButton clientId={auth.githubClientId} text={reg ? 'Sign up with GitHub' : 'Continue with GitHub'} onError={t => fail(t)} onTrigger={onGitHub} />
+          </div>
           <div className="divider">or use email</div>
           <form onSubmit={submit} noValidate>
             {msg && <p className={`form-msg${msg.info ? ' info' : ''}`} role="alert">{msg.text}</p>}
@@ -149,9 +202,10 @@ export default function AuthPage({ mode }) {
             </div>
             <button className="btn primary block" type="submit" disabled={busy}>{busy ? 'Please wait...' : reg ? 'Create account' : 'Log in'}</button>
           </form>
-          <p className="switch">{reg ? <>Already have an account? <Link to="/login">Log in</Link></> : <>New to TypeFlow? <Link to="/register">Create an account</Link></>}</p>
+          <p className="switch">{reg ? <>Already have an account? <Link to="/login">Log in</Link></> : <>New to Cadence? <Link to="/register">Create an account</Link></>}</p>
         </div>
       </div>
+      <AuthLoadingModal isOpen={loadingOverlay.isOpen} mode={loadingOverlay.mode} isSuccess={loadingOverlay.isSuccess} username={loadingOverlay.username} />
     </div>
   );
 }
