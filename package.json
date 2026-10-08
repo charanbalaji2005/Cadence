@@ -1,0 +1,15 @@
+{
+  "name": "typeflow-mern",
+  "version": "2.0.0",
+  "private": true,
+  "description": "TypeFlow typing test: MongoDB, Express, React, Node",
+  "scripts": {
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently -n api,web -c green,cyan \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "build": "npm run build --prefix client",
+    "start": "npm start --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

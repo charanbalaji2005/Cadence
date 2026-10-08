@@ -1,0 +1,30 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      MONGO_URI: mongodb://mongo:27017/typeflow
+      CLIENT_ORIGIN: http://localhost:5000
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Plain HTTP on localhost. Remove this line when you serve the app over HTTPS.
+      COOKIE_SECURE: "false"
+    ports:
+      - "5000:5000"
+
+volumes:
+  mongo-data:
