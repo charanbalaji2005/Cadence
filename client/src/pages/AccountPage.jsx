@@ -33,9 +33,17 @@ export default function AccountPage() {
     catch (err) { setNameMsg({ ok: false, text: err.message }); }
     finally { setSaving(false); }
   };
-  const signOut = async () => { await auth.logout(); ui.toast('Signed out'); nav('/'); };
+  const signOut = async () => {
+    try {
+      await auth.logout();
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    }
+    ui.toast('See you soon! 👋');
+    nav('/');
+  };
   const signOutAll = () => ui.openPrompt({ title: 'Sign out everywhere?', desc: 'This ends your sessions on every device, including this one.', kind: null, okLabel: 'Sign out everywhere',
-    onOk: async () => { try { await auth.logoutAll(); ui.toast('Signed out on every device'); nav('/'); } catch (err) { return err.message; } } });
+    onOk: async () => { try { await auth.logoutAll(); ui.toast('See you soon! Signed out on every device 👋'); nav('/'); } catch (err) { return err.message; } } });
   const remove = () => ui.openPrompt({ title: 'Delete your account?', desc: 'Your account, every result and your leaderboard scores will be deleted for good. Type DELETE to confirm.', kind: 'textarea', value: '', okLabel: 'Delete account', danger: true,
     onOk: async v => { if (v.trim() !== 'DELETE') return 'Type DELETE in capital letters to confirm.'; try { await auth.deleteAccount(); ui.toast('Your account was deleted'); nav('/'); } catch (err) { return err.message; } } });
 
@@ -50,7 +58,7 @@ export default function AccountPage() {
         </div>
         <div className="actions">
           <Link className="btn outline" to="/stats"><ChartLine size="1em" />Stats</Link>
-          <button className="btn ghost" onClick={signOut}><LogOut size="1em" />Sign out</button>
+          <button type="button" className="btn ghost" onClick={signOut}><LogOut size="1em" />Sign out</button>
         </div>
       </div>
       <div className="panel glass">

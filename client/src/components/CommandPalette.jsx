@@ -54,7 +54,9 @@ export default function CommandPalette() {
       { label: 'Go to compete', run: () => nav('/compete') },
       { label: 'Go to friends', run: () => nav('/friends') },
       { label: 'Go to account', run: () => nav('/account') },
-      ...(auth.user.role && auth.user.role !== 'USER' ? [{ label: 'Open admin panel', run: () => nav('/admin') }] : []), { label: 'Sign out', run: async () => { await auth.logout(); ui.toast('Signed out'); nav('/'); } });
+      ...(auth.user.role && auth.user.role !== 'USER' ? [{ label: 'Open admin panel', run: () => nav('/admin') }] : []),
+      { label: 'Sign out', run: async () => { try { await auth.logout(); } catch (err) { console.warn(err); } ui.toast('See you soon! 👋'); nav('/'); } }
+    );
     else c.push({ label: 'Log in', run: () => nav('/login') }, { label: 'Create account', run: () => nav('/register') });
     return c;
   }, [settings, cfg, auth, nav, setCfg, setSetting, ui, compete]);

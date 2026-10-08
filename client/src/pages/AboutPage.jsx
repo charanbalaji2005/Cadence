@@ -31,6 +31,28 @@ export default function AboutPage() {
         <p>Your results, key stats and settings are stored with your account. Only your username and your best 15 and 60 second scores are shown publicly on the leaderboard. Google sign-in asks only for your name, email address and profile picture.</p>
         <p>As a guest, results stay in this browser. When you create an account or log in, they move into your account.</p>
       </div>
+      <div className="panel glass" id="developer">
+        <h2>Developed by</h2>
+        <p><strong>Neelampalli Charan Balaji</strong></p>
+        <p style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem' }}>
+          <a
+            href="https://www.linkedin.com/in/neelampalli-charan-balaji-0b36b7336/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--main)', textDecoration: 'underline' }}
+          >
+            LinkedIn Profile
+          </a>
+          <a
+            href="https://github.com/charanbalaji2005/Cadence/tree/main"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--main)', textDecoration: 'underline' }}
+          >
+            GitHub Repository
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

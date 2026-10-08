@@ -137,14 +137,22 @@ export function AuthProvider({ children }) {
     register: async ({ username, email, password, remember }) => afterAuth(await api('/auth/register', { method: 'POST', body: { username, email, password, remember } })),
     google: async (credential, remember) => afterAuth(await api('/auth/google', { method: 'POST', body: { credential, remember } })),
     logout: async () => {
-      try { await api('/auth/logout', { method: 'POST' }); }
-      finally {
+      try {
+        await api('/auth/logout', { method: 'POST' });
+      } catch (err) {
+        console.warn('Logout endpoint notice (proceeding with local signout):', err);
+      } finally {
         setState(s => ({ ...s, user: null, session: null, serverSettings: null, needsOnboarding: false }));
       }
     },
     logoutAll: async () => {
-      await api('/auth/logout-all', { method: 'POST' });
-      setState(s => ({ ...s, user: null, session: null, serverSettings: null, needsOnboarding: false }));
+      try {
+        await api('/auth/logout-all', { method: 'POST' });
+      } catch (err) {
+        console.warn('Logout-all endpoint notice (proceeding with local signout):', err);
+      } finally {
+        setState(s => ({ ...s, user: null, session: null, serverSettings: null, needsOnboarding: false }));
+      }
     },
     usernameAvailable: async username => api(`/users/username/check?username=${encodeURIComponent(username)}`),
     completeProfile,

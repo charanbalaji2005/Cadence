@@ -253,10 +253,10 @@ function NoAccess({ onUnlocked }) {
       </div>
       <h1 style={{ margin: '0.2rem 0' }}>Admin Authorization Required</h1>
       <p style={{ maxWidth: '440px', margin: '0 0 1rem' }}>
-        The Cadence admin dashboard is restricted. Enter your server <code>ADMIN_PASSWORD</code> configured in <code>.env</code> to elevate your account to Super Admin.
+        The Cadence admin dashboard is restricted. Enter your server <code>ADMIN_PASSWORD</code> configured in <code>.env</code> to {auth.user ? 'elevate your account to Super Admin' : 'sign in directly as Super Admin'}.
       </p>
 
-      {auth.user && (
+      {auth.user ? (
         <div style={{
           fontSize: '0.82rem',
           color: 'var(--sub)',
@@ -267,6 +267,18 @@ function NoAccess({ onUnlocked }) {
           border: '1px solid var(--hairline, rgba(255,255,255,0.1))'
         }}>
           Current Account: <strong>{auth.user.username}</strong> ({auth.user.role || 'USER'})
+        </div>
+      ) : (
+        <div style={{
+          fontSize: '0.82rem',
+          color: 'var(--sub)',
+          marginBottom: '1rem',
+          padding: '0.35rem 0.8rem',
+          background: 'var(--glass, rgba(255,255,255,0.05))',
+          borderRadius: '999px',
+          border: '1px solid var(--hairline, rgba(255,255,255,0.1))'
+        }}>
+          Account Status: <strong>Not Signed In</strong>
         </div>
       )}
 
@@ -314,6 +326,12 @@ function NoAccess({ onUnlocked }) {
           {loading ? 'Authenticating...' : 'Unlock Admin Panel'}
         </button>
 
+        {!auth.user && (
+          <Link className="btn ghost" to="/login" style={{ width: '100%', justifyContent: 'center' }}>
+            Log in with existing account
+          </Link>
+        )}
+
         <Link className="btn outline" to="/" style={{ width: '100%', justifyContent: 'center', marginTop: '0.2rem' }}>
           Back to Cadence
         </Link>
@@ -350,8 +368,7 @@ export default function AdminApp() {
   const gate = (perm, el) => (me?.permissions.includes(perm) ? el : <div className="adm-denied"><ShieldOff size="2rem" aria-hidden="true" /><h1>Not available for your role</h1><p>Ask a super admin if you need access to this page.</p><Link className="btn outline" to="/admin">Back to the dashboard</Link></div>);
 
   if (!auth.ready) return <div className="adm-boot"><div className="spinner" role="status" aria-label="Loading" /></div>;
-  if (!auth.user) return <Navigate to="/login" replace />;
-  if (auth.user.role === 'USER' || denied) return <div className={`adm${dark ? ' viz-dark' : ''}`}><NoAccess onUnlocked={handleUnlocked} /></div>;
+  if (!auth.user || auth.user.role === 'USER' || denied) return <div className={`adm${dark ? ' viz-dark' : ''}`}><NoAccess onUnlocked={handleUnlocked} /></div>;
   if (!ctx) return <div className="adm-boot"><div className="spinner" role="status" aria-label="Loading admin panel" /></div>;
 
   return (

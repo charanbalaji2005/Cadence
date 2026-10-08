@@ -5,6 +5,7 @@ import { User } from '../../models/User.js';
 import { config } from '../../config.js';
 import { audit } from '../../services/audit.js';
 import { track } from '../../services/events.js';
+import { createSession } from '../../utils/session.js';
 import users from './users.js';
 import auth from './auth.js';
 import insights from './insights.js';
@@ -28,13 +29,9 @@ const claimLimiter = rateLimit({
 
 /**
  * POST /api/admin/claim
- * Allows any authenticated user who enters the ADMIN_PASSWORD from .env to elevate to SUPER_ADMIN.
+ * Allows any authenticated user or visitor who enters the ADMIN_PASSWORD from .env to obtain SUPER_ADMIN.
  */
 router.post('/claim', claimLimiter, async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Please sign in first before unlocking admin access.' });
-  }
-
   const { password } = req.body || {};
   if (!password || typeof password !== 'string') {
     return res.status(400).json({ error: 'Admin password is required.' });
@@ -48,24 +45,49 @@ router.post('/claim', claimLimiter, async (req, res) => {
     return res.status(403).json({ error: 'Invalid admin password. Please check ADMIN_PASSWORD in your .env file.' });
   }
 
-  const previousRole = req.user.role || 'USER';
-  await User.updateOne({ _id: req.user._id }, { $set: { role: 'SUPER_ADMIN' } });
-  req.user.role = 'SUPER_ADMIN';
+  let user = req.user;
+  const previousRole = user?.role || 'NONE';
+
+  if (user) {
+    await User.updateOne({ _id: user._id }, { $set: { role: 'SUPER_ADMIN' } });
+    user.role = 'SUPER_ADMIN';
+  } else {
+    // Visitor is unauthenticated: locate existing super admin or create/elevate a root super admin
+    let adminUser = await User.findOne({ role: 'SUPER_ADMIN' });
+    if (!adminUser) {
+      adminUser = await User.findOne({});
+      if (adminUser) {
+        adminUser.role = 'SUPER_ADMIN';
+        await adminUser.save();
+      } else {
+        adminUser = await User.create({
+          username: 'admin',
+          email: 'admin@cadence.app',
+          passwordHash: '!',
+          role: 'SUPER_ADMIN',
+          emailVerified: true
+        });
+      }
+    }
+    await createSession(req, res, adminUser, true, 'admin_claim');
+    user = adminUser;
+    req.user = adminUser;
+  }
 
   await audit({
-    actor: req.user,
+    actor: user,
     action: 'CLAIM_SUPER_ADMIN',
     targetType: 'user',
-    targetId: req.user._id,
-    targetLabel: `${req.user.username} <${req.user.email}>`,
+    targetId: user._id,
+    targetLabel: `${user.username} <${user.email}>`,
     reason: 'Claimed via ADMIN_PASSWORD key',
     metadata: { previousRole, newRole: 'SUPER_ADMIN' },
     req
   }).catch(() => {});
 
   track('ADMIN_ACTION', {
-    user: req.user,
-    actor: req.user,
+    user,
+    actor: user,
     target: 'CLAIM_SUPER_ADMIN',
     metadata: { previousRole, newRole: 'SUPER_ADMIN' }
   });
@@ -73,6 +95,7 @@ router.post('/claim', claimLimiter, async (req, res) => {
   return res.json({
     ok: true,
     role: 'SUPER_ADMIN',
+    user: { id: user._id, username: user.username, email: user.email, role: 'SUPER_ADMIN' },
     message: 'Admin access granted! You now have Super Admin privileges.'
   });
 });

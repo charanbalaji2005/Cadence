@@ -43,7 +43,16 @@ export default function Header({ onBrand }) {
     return () => document.removeEventListener('mousedown', close);
   }, [menu]);
 
-  const signOut = async () => { setMenu(false); await auth.logout(); ui.toast('Signed out'); nav('/'); };
+  const signOut = async () => {
+    setMenu(false);
+    try {
+      await auth.logout();
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    }
+    ui.toast('See you soon! 👋');
+    nav('/');
+  };
 
   return (
     <header className="top">
@@ -126,7 +135,7 @@ export default function Header({ onBrand }) {
                 <Link role="menuitem" to="/settings"><Settings size="1em" />Settings</Link>
                 {auth.user.role && auth.user.role !== 'USER' && <Link role="menuitem" to="/admin"><ShieldCheck size="1em" />Admin panel</Link>}
                 <hr />
-                <button role="menuitem" onClick={signOut}><LogOut size="1em" />Sign out</button>
+                <button role="menuitem" type="button" onClick={signOut}><LogOut size="1em" />Sign out</button>
               </div>
             )}
           </div>
