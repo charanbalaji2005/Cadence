@@ -73,6 +73,19 @@ export default function TestPage() {
   const restart = useCallback((repeat = false) => { repeatNext.current = repeat; resultRef.current = null; setResult(null); setSave(null); setTestKey(k => k + 1); }, []);
 
   useEffect(() => { const fn = () => restart(); window.addEventListener('tf:restart', fn); return () => window.removeEventListener('tf:restart', fn); }, [restart]);
+
+  // Coming back from another browser tab gives fresh text (a test interrupted by the switch restarts too).
+  // A finished test's results stay on screen.
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVis = () => {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      if (hiddenAt && !resultRef.current) restart();
+      hiddenAt = 0;
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [restart]);
   useEffect(() => { requestAnimationFrame(() => { engine.current?.measure(); engine.current?.placeCaret(); }); }, [settings.fontSize, settings.caret]);
   useEffect(() => {
     let t;

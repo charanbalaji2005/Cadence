@@ -1,4 +1,5 @@
 import { rand } from './format.js';
+import { ENGLISH_1K, ENGLISH_ADVANCED, MORE_QUOTES } from './content.js';
 
 export const WORDS = ('the be of and a to in he have it that for they with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line').split(' ');
 
@@ -12,19 +13,26 @@ export const QUOTES = [
   'The fastest typists are not the ones who never make mistakes; they are the ones who recover before anyone notices that anything went wrong.',
   'Progress rarely arrives in a single leap. It shows up as one more word per minute, again and again, until the old record looks small and you wonder why it ever felt hard.'
 ];
+// The original eight stay first and in order, so the seeded quote a race picks never changes meaning between versions of the list.
+QUOTES.push(...MORE_QUOTES);
 export const quoteLen = q => (q.length <= 90 ? 'short' : q.length <= 140 ? 'medium' : 'long');
 
-export function genWords(n, ctx, { punctuation, numbers }) {
+/** Word lists for time and words modes. Races always use 'english'. */
+export const WORD_LISTS = { english: WORDS, 'english 1k': ENGLISH_1K, 'english advanced': ENGLISH_ADVANCED };
+export const WORD_LIST_NAMES = Object.keys(WORD_LISTS);
+
+/** rng defaults to Math.random; races pass a seeded one so every player gets the same words. */
+export function genWords(n, ctx, { punctuation, numbers }, rng = Math.random, list = WORDS) {
   const out = [];
   for (let i = 0; i < n; i++) {
-    let w = rand(WORDS);
-    while (w === ctx.prev) w = rand(WORDS);
+    let w = rand(list, rng);
+    while (w === ctx.prev) w = rand(list, rng);
     ctx.prev = w;
-    if (numbers && Math.random() < 0.12) w = String(Math.floor(Math.random() * (Math.random() < 0.5 ? 100 : 10000)));
+    if (numbers && rng() < 0.12) w = String(Math.floor(rng() * (rng() < 0.5 ? 100 : 10000)));
     if (punctuation) {
       if (ctx.cap && /^[a-z]/.test(w)) w = w[0].toUpperCase() + w.slice(1);
       ctx.cap = false;
-      const r = Math.random();
+      const r = rng();
       if (r < 0.09) { w += '.'; ctx.cap = true; }
       else if (r < 0.15) w += ',';
       else if (r < 0.17) { w += '?'; ctx.cap = true; }

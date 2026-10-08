@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     // Same-origin API calls in development, so the session cookie just works.
-    proxy: { '/api': { target: 'http://localhost:5000', changeOrigin: false } }
+    proxy: { '/api': { target: 'http://localhost:5000', changeOrigin: false, ws: true } } // ws: competition sockets live at /api/ws
   },
   build: { outDir: 'dist', sourcemap: false }
 });

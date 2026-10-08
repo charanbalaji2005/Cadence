@@ -1,19 +1,17 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { Result } from '../models/Result.js';
+import { Result, COUNTED_RESULTS } from '../models/Result.js';
 import { User } from '../models/User.js';
+import { DailyActivity } from '../models/DailyActivity.js';
+import { recordDailyTest, bulkRecordDailyTests } from '../utils/activity.js';
 import { parse, resultSchema, importSchema } from '../utils/validate.js';
 import { isPlausible, leaderboardCheck, pbKey } from '../utils/rank.js';
+import { keyInc, userStatsUpdate } from '../utils/resultStats.js';
 
 const router = Router();
 router.use(requireAuth);
 
-const pick = r => ({ wpm: r.wpm, raw: r.raw, acc: r.acc, consistency: r.consistency, mode: r.mode, mode2: r.mode2, punctuation: r.punctuation, numbers: r.numbers, elapsed: r.elapsed, chars: r.chars });
-const keyInc = keyStats => {
-  const inc = {};
-  for (const [k, v] of Object.entries(keyStats || {})) for (const f of ['n', 'e', 'ms', 'mc']) if (v[f]) inc[`keyStats.${k}.${f}`] = v[f];
-  return inc;
-};
+const pick = r => ({ wpm: r.wpm, raw: r.raw, acc: r.acc, consistency: r.consistency, mode: r.mode, mode2: r.mode2, language: r.language || 'english', punctuation: r.punctuation, numbers: r.numbers, elapsed: r.elapsed, chars: r.chars });
 
 async function rankFor(userId, mode2, wpm) {
   const better = await Result.aggregate([
@@ -28,7 +26,7 @@ async function rankFor(userId, mode2, wpm) {
 
 router.get('/', async (req, res) => {
   const limit = Math.min(2000, Math.max(1, Number(req.query.limit) || 1000));
-  const rows = await Result.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(limit);
+  const rows = await Result.find({ user: req.user._id, ...COUNTED_RESULTS }).sort({ createdAt: -1 }).limit(limit);
   res.set('Cache-Control', 'no-store');
   res.json({ results: rows.reverse().map(r => r.toPublic()) });
 });
@@ -42,17 +40,10 @@ router.post('/', async (req, res) => {
   const lb = leaderboardCheck(d);
   const result = await Result.create({ ...pick(d), user: req.user._id, lbEligible: lb.eligible, ...(d.clientId ? { clientId: d.clientId } : {}) });
 
-  const update = {};
-  const inc = keyInc(d.keyStats);
-  if (Object.keys(inc).length) update.$inc = inc;
-  let pb = null;
-  if ((d.mode === 'time' || d.mode === 'words') && d.acc >= 50 && isPlausible(d)) {
-    const key = pbKey(d), prev = req.user.personalBests?.get(key);
-    if (!prev || d.wpm > prev.wpm) {
-      update.$set = { [`personalBests.${key}`]: { wpm: d.wpm, acc: d.acc, raw: d.raw, consistency: d.consistency, date: new Date() } };
-      pb = { key, previous: prev ? prev.wpm : null };
-    }
-  }
+  // Update aggregated DailyActivity
+  recordDailyTest(req.user._id, result).catch(e => console.error('DailyActivity error:', e));
+
+  const { update, pb } = userStatsUpdate(req.user, d);
   if (Object.keys(update).length) await User.updateOne({ _id: req.user._id }, update);
 
   const leaderboard = { eligible: lb.eligible, reason: lb.reason, rank: null, newBest: false };
@@ -76,6 +67,9 @@ router.post('/import', async (req, res) => {
   const docs = d.results.map(r => ({ ...pick(r), user: req.user._id, lbEligible: false, imported: true, createdAt: new Date(Math.min(r.date || now, now)) }));
   await Result.collection.insertMany(docs);
 
+  // Update aggregated DailyActivity in background
+  bulkRecordDailyTests(req.user._id, docs).catch(e => console.error('Bulk DailyActivity error:', e));
+
   const inc = {};
   d.results.forEach(r => Object.entries(keyInc(r.keyStats)).forEach(([k, v]) => { inc[k] = (inc[k] || 0) + v; }));
   const set = {};
@@ -94,6 +88,7 @@ router.post('/import', async (req, res) => {
 
 router.delete('/', async (req, res) => {
   await Result.deleteMany({ user: req.user._id });
+  await DailyActivity.deleteMany({ user: req.user._id });
   await User.updateOne({ _id: req.user._id }, { $set: { keyStats: {}, personalBests: {} } });
   res.json({ ok: true });
 });

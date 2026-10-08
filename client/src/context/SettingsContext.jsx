@@ -9,7 +9,7 @@ export const DEFAULT_SETTINGS = {
   liveSpeed: true, liveAcc: false, quickRestart: true, stopOnError: false, confidence: false,
   capsWarning: true, sound: 'off', pace: 'off', paceWpm: 80, dailyGoal: 10
 };
-export const DEFAULT_CFG = { mode: 'time', time: 60, words: 25, quoteLen: 'all', punctuation: false, numbers: false, customText: 'The quick brown fox jumps over the lazy dog.', customLabel: '' };
+export const DEFAULT_CFG = { mode: 'time', time: 60, words: 25, quoteLen: 'all', punctuation: false, numbers: false, wordList: 'english', customText: 'The quick brown fox jumps over the lazy dog.', customLabel: '' };
 const SIZES = { small: 'clamp(1.1rem, .95rem + 1vw, 1.5rem)', medium: 'clamp(1.25rem, 1rem + 1.4vw, 1.9rem)', large: 'clamp(1.4rem, 1.1rem + 1.8vw, 2.4rem)' };
 
 const Ctx = createContext(null);

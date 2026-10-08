@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AtSign, Hash, Clock, Type, Quote, Mountain, Wrench, Pencil, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { AtSign, Hash, Clock, Type, Quote, Mountain, Wrench, Pencil, SlidersHorizontal, ChevronDown, Globe } from 'lucide-react';
+import { WORD_LIST_NAMES } from '../lib/words.js';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUI, useOverlay } from '../context/UIContext.jsx';
 import { fmtTime } from '../lib/format.js';
@@ -44,6 +45,11 @@ export default function ConfigBar() {
     <B active={cfg.punctuation} icon={AtSign} onClick={() => setCfg({ punctuation: !cfg.punctuation })}>punctuation</B>
     <B active={cfg.numbers} icon={Hash} onClick={() => setCfg({ numbers: !cfg.numbers })}>numbers</B>
   </>);
+  const list = WORD_LIST_NAMES.includes(cfg.wordList) ? cfg.wordList : 'english';
+  const nextList = WORD_LIST_NAMES[(WORD_LIST_NAMES.indexOf(list) + 1) % WORD_LIST_NAMES.length];
+  const listShort = l => (l === 'english' ? 'english' : l.replace('english ', ''));
+  const listButton = extras && <B active={list !== 'english'} icon={Globe} label={`Word list: ${list}. Switch to ${nextList}`} onClick={() => setCfg({ wordList: nextList })}>{listShort(list)}</B>;
+  const listChoices = WORD_LIST_NAMES.map(l => <B key={l} active={list === l} onClick={() => setCfg({ wordList: l })}>{l}</B>);
   const modes = (<>
     <B active={m === 'time'} icon={Clock} onClick={() => setCfg({ mode: 'time' })}>time</B>
     <B active={m === 'words'} icon={Type} onClick={() => setCfg({ mode: 'words' })}>words</B>
@@ -57,12 +63,12 @@ export default function ConfigBar() {
   else if (m === 'quote') { subTitle = 'Length'; sub = ['all', 'short', 'medium', 'long'].map(l => <B key={l} active={cfg.quoteLen === l} onClick={() => setCfg({ quoteLen: l })}>{l}</B>); }
   else if (m === 'custom') { subTitle = 'Text'; sub = <B icon={Pencil} onClick={customText}>change text</B>; }
 
-  const summary = [m === 'time' ? `time ${cfg.time}` : m === 'words' ? `words ${cfg.words}` : m === 'quote' ? `quote ${cfg.quoteLen}` : m, extras && cfg.punctuation && 'punctuation', extras && cfg.numbers && 'numbers'].filter(Boolean).join(', ');
+  const summary = [m === 'time' ? `time ${cfg.time}` : m === 'words' ? `words ${cfg.words}` : m === 'quote' ? `quote ${cfg.quoteLen}` : m, extras && list !== 'english' && list, extras && cfg.punctuation && 'punctuation', extras && cfg.numbers && 'numbers'].filter(Boolean).join(', ');
 
   return (
     <>
       <div className="config glass" role="toolbar" aria-label="Test options">
-        {mods && <><div className="group">{mods}</div><span className="sep" /></>}
+        {mods && <><div className="group">{listButton}{mods}</div><span className="sep" /></>}
         <div className="group">{modes}</div>
         {sub && <><span className="sep" /><div className="group">{sub}</div></>}
       </div>
@@ -77,6 +83,7 @@ export default function ConfigBar() {
             <div className="sheet-config">
               <h3>Mode</h3><div className="group">{modes}</div>
               {sub && <><h3>{subTitle}</h3><div className="group">{sub}</div></>}
+              {extras && <><h3>Word list</h3><div className="group">{listChoices}</div></>}
               {mods && <><h3>Extras</h3><div className="group">{mods}</div></>}
             </div>
             <div className="dialog-actions"><button type="button" className="btn primary block" onClick={() => setSheet(false)}>Done</button></div>

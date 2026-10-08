@@ -1,6 +1,6 @@
 import { esc, isTouch } from './format.js';
-import { genWords, quoteLen, QUOTES } from './words.js';
-import { rand } from './format.js';
+import { genWords, quoteLen, QUOTES, WORD_LISTS } from './words.js';
+import { rand, seededRandom } from './format.js';
 
 const kogasa = cv => 100 * (1 - Math.tanh(cv + Math.pow(cv, 3) / 3 + Math.pow(cv, 5) / 5));
 
@@ -10,6 +10,9 @@ const kogasa = cv => 100 * (1 - Math.tanh(cv + Math.pow(cv, 3) / 3 + Math.pow(cv
  *
  * els:   { words, track, wrap, caret, pace, input, counter, speed, lang }
  * hooks: { getSettings(), paceTarget(cfg), onFinish(result), onTyping(bool), sfx(kind), canFocus() }
+ *
+ * Races set cfg.race and cfg.seed: the text comes from the shared seed, typing waits for
+ * startRace() instead of starting on the first key, and every finish is reported.
  */
 export class TypingEngine {
   constructor(els, hooks) {
@@ -24,11 +27,22 @@ export class TypingEngine {
     this.stopTimers();
     this.cfg = cfg;
     const mode = cfg.mode, gen = { cap: true, prev: '' }, opt = { punctuation: cfg.punctuation, numbers: cfg.numbers };
+    const rng = cfg.seed != null ? seededRandom(cfg.seed) : Math.random;
+    const listName = cfg.seed == null && WORD_LISTS[cfg.wordList] ? cfg.wordList : 'english';
+    const list = WORD_LISTS[listName];
     let words;
     if (repeat && this.lastWords && this.lastWords.mode === mode) words = this.lastWords.list.slice();
-    else if (mode === 'time') words = genWords(120, gen, opt);
-    else if (mode === 'words') words = genWords(cfg.words, gen, opt);
-    else if (mode === 'quote') { const pool = QUOTES.filter(q => cfg.quoteLen === 'all' || quoteLen(q) === cfg.quoteLen); words = rand(pool.length ? pool : QUOTES).split(' '); }
+    else if (mode === 'time') words = genWords(120, gen, opt, rng, list);
+    else if (mode === 'words') words = genWords(cfg.words, gen, opt, rng, list);
+    else if (mode === 'quote') {
+      let pool = QUOTES.filter(q => cfg.quoteLen === 'all' || quoteLen(q) === cfg.quoteLen);
+      if (!pool.length) pool = QUOTES;
+      // A fresh test never repeats the quote just typed (races are seeded and skip this).
+      if (cfg.seed == null && pool.length > 1) pool = pool.filter(q => q !== this.lastQuote);
+      const q = rand(pool, rng);
+      this.lastQuote = q;
+      words = q.split(' ');
+    }
     else if (mode === 'custom') { words = String(cfg.customText || '').trim().split(/\s+/).filter(Boolean); if (!words.length) words = ['type']; }
     else words = [''];
     if (cfg.punctuation && mode === 'words') { const l = words.length - 1; if (!/[.?!"')]$/.test(words[l])) words[l] = words[l].replace(/[,;]$/, '') + '.'; }
@@ -36,9 +50,10 @@ export class TypingEngine {
     this.S = {
       mode, time: cfg.time, words, typed: [''], wi: 0, started: false, finished: false, start: 0, timer: null, raf: 0,
       keys: 0, correctKeys: 0, wrongKeys: 0, secKeys: 0, secErr: 0, seconds: [], gen, opt, committedLast: false,
-      punctuation: cfg.punctuation, numbers: cfg.numbers, keyStats: {}, lastKey: 0, pace: this.h.paceTarget(cfg)
+      punctuation: cfg.punctuation, numbers: cfg.numbers, keyStats: {}, lastKey: 0, pace: this.h.paceTarget(cfg), rng, race: !!cfg.race,
+      list, language: mode === 'time' || mode === 'words' ? listName : 'english'
     };
-    this.el.lang.textContent = mode === 'quote' ? 'english quote' : mode === 'custom' ? (cfg.customLabel || 'custom text') : mode === 'zen' ? 'zen, shift + enter to finish' : 'english';
+    this.el.lang.textContent = mode === 'quote' ? 'english quote' : mode === 'custom' ? (cfg.customLabel || 'custom text') : mode === 'zen' ? 'zen, shift + enter to finish' : listName;
     this.renderAllWords();
     this.scrollY = 0; this.el.track.style.transform = '';
     this.el.pace.hidden = true;
@@ -66,7 +81,7 @@ export class TypingEngine {
   renderWord(i, just) { const w = this.wordEl(i); if (w) w.innerHTML = this.lettersHtml(i, just); }
   renderAllWords() { this.el.words.innerHTML = this.S.words.map((_, i) => `<div class="word${i === 0 ? ' active' : ''}">${this.lettersHtml(i)}</div>`).join(''); }
   appendWords(n) {
-    const S = this.S, start = S.words.length, more = genWords(n, S.gen, S.opt);
+    const S = this.S, start = S.words.length, more = genWords(n, S.gen, S.opt, S.rng, S.list);
     S.words.push(...more);
     this.el.words.insertAdjacentHTML('beforeend', more.map((_, k) => `<div class="word">${this.lettersHtml(start + k)}</div>`).join(''));
   }
@@ -112,6 +127,32 @@ export class TypingEngine {
     S.started = true; S.start = performance.now();
     S.timer = setInterval(() => this.tick(), 100);
     if (S.pace > 0) { this.el.pace.hidden = false; S.raf = requestAnimationFrame(() => this.paceFrame()); }
+  }
+  /** Starts a race on the shared clock. lateMs is how long ago GO was, so a late tab doesn't get extra time. */
+  startRace(lateMs = 0) {
+    const S = this.S;
+    if (!S || S.started || S.finished) return;
+    this.start();
+    S.start -= Math.max(0, lateMs);
+    this.tick();
+  }
+  /** Lightweight numbers for the live race board. */
+  liveStats() {
+    const S = this.S;
+    if (!S || !S.started) return { progress: 0, wpm: 0, acc: 100, chars: 0 };
+    const elapsed = (performance.now() - S.start) / 1000, chars = this.correctCharCount();
+    let progress;
+    if (S.mode === 'time') progress = Math.min(100, elapsed / S.time * 100);
+    else {
+      let total = 0, pos = 0;
+      for (let i = 0; i < S.words.length; i++) {
+        const len = S.words[i].length + (i < S.words.length - 1 ? 1 : 0);
+        total += len;
+        if (i < S.wi) pos += len; else if (i === S.wi) pos += Math.min((S.typed[i] || '').length, S.words[i].length);
+      }
+      progress = total ? Math.min(100, pos / total * 100) : 0;
+    }
+    return { progress, wpm: elapsed >= 1 ? chars / 5 / (elapsed / 60) : 0, acc: S.keys ? S.correctKeys / S.keys * 100 : 100, chars };
   }
   correctCharCount() {
     const S = this.S; let n = 0;
@@ -184,7 +225,7 @@ export class TypingEngine {
       this.afterInput();
       return;
     }
-    if (!S.started) this.start();
+    if (!S.started) { if (S.race) return; this.start(); }
     const t = S.typed[S.wi], exp = S.mode === 'zen' ? null : S.words[S.wi];
     if (exp !== null && t.length >= exp.length + 12) return;
     const expected = exp === null ? c : exp[t.length];
@@ -240,7 +281,7 @@ export class TypingEngine {
     const frac = elapsed - S.seconds.length;
     if (frac > 0.2 && S.secKeys > 0) S.seconds.push({ raw: S.secKeys * 12 / frac, err: S.secErr, wpm: this.correctCharCount() / 5 / (elapsed / 60) });
     this.h.onTyping(false);
-    if (elapsed < 1 || S.keys < 2) { this.newTest(this.cfg); return; }
+    if (!S.race && (elapsed < 1 || S.keys < 2)) { this.newTest(this.cfg); return; }
     this.h.onFinish(this.computeResult(elapsed));
   }
   computeResult(elapsed) {
@@ -263,7 +304,7 @@ export class TypingEngine {
       consistency: r2(mean > 0 ? Math.max(0, kogasa(sd / mean)) : 0), chars: { correct, incorrect, extra, missed },
       elapsed: r2(elapsed), mode: S.mode, mode2: S.mode === 'time' ? String(S.time) : S.mode === 'words' ? String(S.words.length) : '',
       punctuation: S.mode === 'time' || S.mode === 'words' ? S.punctuation : false, numbers: S.mode === 'time' || S.mode === 'words' ? S.numbers : false,
-      seconds: S.seconds.slice(), keyStats: S.keyStats, date: Date.now()
+      seconds: S.seconds.slice(), keyStats: S.keyStats, date: Date.now(), language: S.language
     };
   }
 }

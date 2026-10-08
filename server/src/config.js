@@ -9,8 +9,12 @@ export const config = {
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   githubClientId: process.env.GITHUB_CLIENT_ID || '',
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  adminPassword: process.env.ADMIN_PASSWORD || 'CadenceAdmin#2026!SecureKey',
   // Secure cookies need HTTPS. Set COOKIE_SECURE=false only for local production builds served over plain HTTP.
   cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : process.env.NODE_ENV === 'production',
+  // Comma-separated emails that become SUPER_ADMIN (how the first admin is created). Promotes only.
+  adminEmails: (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
+  appVersion: process.env.APP_VERSION || process.env.npm_package_version || '2.0.0',
   cookieName: 'tf_session',
   sessionDays: 7,
   shortSessionHours: 24

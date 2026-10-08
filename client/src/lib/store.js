@@ -16,7 +16,7 @@ const set = patch => { state = { ...state, ...patch }; emit(); };
 export const getData = () => state;
 export const useData = () => useSyncExternalStore(fn => (listeners.add(fn), () => listeners.delete(fn)), getData);
 
-const slim = r => ({ wpm: r.wpm, raw: r.raw, acc: r.acc, consistency: r.consistency, mode: r.mode, mode2: r.mode2, punctuation: r.punctuation, numbers: r.numbers, elapsed: r.elapsed, chars: r.chars, date: r.date });
+const slim = r => ({ wpm: r.wpm, raw: r.raw, acc: r.acc, consistency: r.consistency, mode: r.mode, mode2: r.mode2, punctuation: r.punctuation, numbers: r.numbers, elapsed: r.elapsed, chars: r.chars, date: r.date, ...(r.language && r.language !== 'english' ? { language: r.language } : {}) });
 const forServer = r => ({ ...slim(r), keyStats: r.keyStats || {}, ...(r.clientId ? { clientId: r.clientId } : {}) });
 function mergeKeys(into, ks) {
   const out = { ...into };
@@ -71,6 +71,13 @@ export async function saveResult(user, r) {
     local.set(pendingKey(user.id), [...local.get(pendingKey(user.id), []), forServer(r)].slice(-200));
     return { pb, leaderboard: null, offline: true };
   }
+}
+
+/** Adds a result the server already saved (a competition race) so stats and achievements update without a reload. */
+export function recordSavedResult(r) {
+  const { bests, pb } = localPb(state.bests, r);
+  set({ results: [...state.results, { ...slim(r), ...(r.race ? { race: r.race } : {}) }], keyStats: mergeKeys(state.keyStats, r.keyStats || {}), bests });
+  return pb;
 }
 
 /** Moves guest results into a newly signed-in account. Returns how many were moved. */

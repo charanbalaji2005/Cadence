@@ -8,6 +8,7 @@ import { fmtDate, fmtTime } from '../lib/format.js';
 import { useData } from '../lib/store.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
+import CompetitionHistory from '../components/compete/CompetitionHistory.jsx';
 
 export default function AccountPage() {
   const auth = useAuth();
@@ -61,6 +62,7 @@ export default function AccountPage() {
           <div><span>Day streak</span><strong>{a.current}</strong></div>
         </div>
       </div>
+      <CompetitionHistory limit={5} />
       <div className="panel glass">
         <h2><Award size="1em" />Achievements<span className="aside">{unlocked.length} of {ACHIEVEMENTS.length} unlocked</span></h2>
         <div className="goal-bar" style={{ margin: '0 0 1.25rem' }}><span style={{ width: `${unlocked.length / ACHIEVEMENTS.length * 100}%` }} /></div>

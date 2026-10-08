@@ -17,6 +17,7 @@ export const resultSchema = z.object({
   consistency: z.number().min(0).max(100),
   mode: z.enum(['time', 'words', 'quote', 'zen', 'custom']),
   mode2: z.string().max(10).regex(/^\d*$/).default(''),
+  language: z.enum(['english', 'english 1k', 'english advanced']).default('english'),
   punctuation: z.boolean().default(false),
   numbers: z.boolean().default(false),
   elapsed: z.number().min(1).max(4 * 3600),

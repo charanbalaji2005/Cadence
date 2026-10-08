@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { useUI, useOverlay } from '../context/UIContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useCompete } from '../context/CompeteContext.jsx';
 import { getData } from '../lib/store.js';
 import { weakKeys } from '../lib/achievements.js';
 import { practiceText } from '../lib/words.js';
@@ -12,6 +13,7 @@ export default function CommandPalette() {
   const ui = useUI();
   const nav = useNavigate();
   const auth = useAuth();
+  const compete = useCompete();
   const { settings, setSetting, cfg, setCfg } = useSettings();
   const [q, setQ] = useState('');
   const [idx, setIdx] = useState(0);
@@ -46,10 +48,16 @@ export default function CommandPalette() {
       { label: 'Go to settings', run: () => nav('/settings') },
       { label: 'Go to about', run: () => nav('/about') }
     ];
-    if (auth.user) c.push({ label: 'Go to account', run: () => nav('/account') }, { label: 'Sign out', run: async () => { await auth.logout(); ui.toast('Signed out'); nav('/'); } });
+    if (auth.user) c.push(
+      { label: 'Create competition room', run: () => setTimeout(() => compete.openCreateRoom(), 0) },
+      { label: 'Join competition room', run: () => setTimeout(() => compete.openJoinRoom(), 0) },
+      { label: 'Go to compete', run: () => nav('/compete') },
+      { label: 'Go to friends', run: () => nav('/friends') },
+      { label: 'Go to account', run: () => nav('/account') },
+      ...(auth.user.role && auth.user.role !== 'USER' ? [{ label: 'Open admin panel', run: () => nav('/admin') }] : []), { label: 'Sign out', run: async () => { await auth.logout(); ui.toast('Signed out'); nav('/'); } });
     else c.push({ label: 'Log in', run: () => nav('/login') }, { label: 'Create account', run: () => nav('/register') });
     return c;
-  }, [settings, cfg, auth, nav, setCfg, setSetting, ui]);
+  }, [settings, cfg, auth, nav, setCfg, setSetting, ui, compete]);
 
   const items = commands.filter(c => c.label.toLowerCase().includes(q.trim().toLowerCase()));
   useEffect(() => { if (ui.palette) { setQ(''); setIdx(0); } }, [ui.palette]);

@@ -1,13 +1,32 @@
 import { Session } from '../models/Session.js';
+import { User } from '../models/User.js';
 import { config } from '../config.js';
 import { hashToken } from '../utils/session.js';
 
+const TOUCH_MS = 5 * 60 * 1000;
+
+/** The session for a cookie token, if it is unexpired, not revoked, and its account is active. */
+export async function findActiveSession(token) {
+  if (!token || typeof token !== 'string' || token.length > 128) return null;
+  const session = await Session.findOne({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() }, revokedAt: { $exists: false } }).populate('user');
+  // Suspended and deleted accounts are signed out everywhere, whatever cookie they hold.
+  if (!session?.user || (session.user.status && session.user.status !== 'active')) return null;
+  return session;
+}
+
 /** Attaches req.user and req.session when a valid session cookie is present. */
 export async function loadSession(req, _res, next) {
-  const token = req.cookies?.[config.cookieName];
-  if (!token || typeof token !== 'string' || token.length > 128) return next();
-  const session = await Session.findOne({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() } }).populate('user');
-  if (session && session.user) { req.session = session; req.user = session.user; }
+  const session = await findActiveSession(req.cookies?.[config.cookieName]);
+  if (session) {
+    req.session = session; req.user = session.user;
+    // "Last active" is refreshed at most every 5 minutes, so it costs almost nothing.
+    const now = Date.now();
+    if (!session.lastActiveAt || now - session.lastActiveAt > TOUCH_MS) {
+      const at = new Date(now);
+      Session.updateOne({ _id: session._id }, { $set: { lastActiveAt: at } }).catch(() => {});
+      User.updateOne({ _id: session.user._id }, { $set: { lastActiveAt: at } }).catch(() => {});
+    }
+  }
   next();
 }
 

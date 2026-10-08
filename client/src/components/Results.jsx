@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Repeat, ChartLine, Trophy } from 'lucide-react';
 import { LineChart } from './Chart.jsx';
 import { fmtTime, reduceMotion, testTypeParts } from '../lib/format.js';
+import { useNotifications } from '../context/NotificationContext.jsx';
 
 function CountUp({ to, suffix = '' }) {
   const ref = useRef(null);
@@ -18,8 +19,23 @@ function CountUp({ to, suffix = '' }) {
 }
 
 export default function Results({ r, save, onNext, onRepeat, signedIn }) {
+  const { addNotification } = useNotifications();
   const nextRef = useRef(null);
   const shownAt = useRef(0);
+  const notifiedPbRef = useRef(false);
+
+  useEffect(() => {
+    if (save?.pb && !notifiedPbRef.current) {
+      notifiedPbRef.current = true;
+      addNotification({
+        category: 'Personal Best',
+        title: `New PB: ${Math.round(r.wpm)} WPM!`,
+        content: `Accuracy: ${r.acc.toFixed(1)}% (${testTypeParts(r)})`,
+        type: 'success'
+      });
+    }
+  }, [save?.pb, r, addNotification]);
+
   // Keys still in flight when the test ends must not trigger Next, so focus it after a short pause.
   useEffect(() => {
     shownAt.current = performance.now();

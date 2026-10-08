@@ -17,13 +17,14 @@ export function isPlausible(r) {
 /** Server-side rules for whether a result can appear on the leaderboard. */
 export function leaderboardCheck(r) {
   if (r.mode !== 'time' || !LB_LENGTHS.includes(r.mode2) || r.punctuation || r.numbers) return { eligible: false, reason: null };
+  if (r.language && r.language !== 'english') return { eligible: false, reason: 'Leaderboards use the standard english word list.' };
   if (!isPlausible(r)) return { eligible: false, reason: 'This result looked unusual, so it was not ranked.' };
   if (r.acc < LB_MIN_ACC) return { eligible: false, reason: `Leaderboard scores need at least ${LB_MIN_ACC}% accuracy.` };
   return { eligible: true, reason: null };
 }
 
 export function pbKey(r) {
-  return [r.mode, r.mode2, r.punctuation ? 'punctuation' : '', r.numbers ? 'numbers' : ''].filter(Boolean).join(' ');
+  return [r.mode, r.mode2, r.language && r.language !== 'english' ? r.language : '', r.punctuation ? 'punctuation' : '', r.numbers ? 'numbers' : ''].filter(Boolean).join(' ');
 }
 
 /** Start of "today" for a client-supplied UTC offset in minutes (Date.getTimezoneOffset()). */

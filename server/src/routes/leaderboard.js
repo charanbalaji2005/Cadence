@@ -24,7 +24,8 @@ router.get('/', async (req, res) => {
     Result.aggregate([...bestPerPlayer(match), { $limit: 100 }]),
     Result.aggregate([{ $match: match }, { $group: { _id: '$user' } }, { $count: 'n' }])
   ]);
-  const users = await User.find({ _id: { $in: top.map(t => t._id) } }).select('username avatar').lean();
+  // Suspended and deleted accounts drop off the board.
+  const users = await User.find({ _id: { $in: top.map(t => t._id) }, status: { $nin: ['suspended', 'deleted'] } }).select('username avatar').lean();
   const byId = new Map(users.map(u => [u._id.toString(), u]));
   const entries = top
     .map(t => ({ t, u: byId.get(t._id.toString()) }))

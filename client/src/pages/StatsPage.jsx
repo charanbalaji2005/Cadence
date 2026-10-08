@@ -1,23 +1,46 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Keyboard, TrendingUp, Target, ChartColumn, CalendarDays, History, Download, Dumbbell, ChevronLeft, ChevronRight } from 'lucide-react';
-import { LineChart, BarChart } from '../components/Chart.jsx';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Keyboard,
+  Download,
+  Calendar,
+  Layers,
+  Sparkles,
+  BarChart3,
+  Clock,
+  Flame,
+  Trophy,
+  History as HistoryIcon
+} from 'lucide-react';
+
+import ActivitySummary from '../components/activity/ActivitySummary.jsx';
+import ActivityHeatmap from '../components/activity/ActivityHeatmap.jsx';
+import PerformanceTrend from '../components/activity/PerformanceTrend.jsx';
+import TypingStreak from '../components/activity/TypingStreak.jsx';
+import HowYouType from '../components/activity/HowYouType.jsx';
+import LanguageActivity from '../components/activity/LanguageActivity.jsx';
+import AchievementActivity from '../components/activity/AchievementActivity.jsx';
+import TestHistoryList from '../components/activity/TestHistoryList.jsx';
+import TestHistoryTimeline from '../components/activity/TestHistoryTimeline.jsx';
+
 import { useData } from '../lib/store.js';
-import { aggregate, weakKeys } from '../lib/achievements.js';
-import { practiceText } from '../lib/words.js';
-import { clamp, dayKey, esc, fmtDate, fmtTime, testTypeParts } from '../lib/format.js';
-import { mix, resolveTheme } from '../lib/themes.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
-
-const KB_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
-const modeKey = h => h.mode + (h.mode2 ? ' ' + h.mode2 : '');
+import { api } from '../lib/api.js';
+import { practiceText } from '../lib/words.js';
+import { dayKey, fmtDate, testTypeParts } from '../lib/format.js';
+import { streaks, aggregate } from '../lib/achievements.js';
+import { fadeIn } from '../animations/variants.js';
 
 function download(name, data, type) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type }));
-  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
@@ -26,163 +49,328 @@ export default function StatsPage() {
   const auth = useAuth();
   const ui = useUI();
   const nav = useNavigate();
-  const { settings, setCfg } = useSettings();
-  const [range, setRange] = useState('30');
-  const [mode, setMode] = useState('all');
-  const [page, setPage] = useState(0);
-  const all = data.results;
+  const { setCfg } = useSettings();
 
-  const modes = useMemo(() => [...new Set(all.map(modeKey))].sort(), [all]);
-  const hist = useMemo(() => {
-    const cutoff = range === 'all' ? 0 : Date.now() - Number(range) * 864e5;
-    return all.filter(h => h.date >= cutoff && (mode === 'all' || modeKey(h) === mode));
-  }, [all, range, mode]);
+  const all = data.results || [];
+  const currentYear = new Date().getFullYear();
 
-  const head = (
-    <>
-      <h1>Stats and history</h1>
-      <p className="lede">{auth.user ? `Every test you've finished as ${auth.user.username}.` : <>Your guest results in this browser. <Link to="/login" style={{ color: 'var(--accent)' }}>Log in</Link> to keep them with your account.</>}</p>
-    </>
-  );
-  if (data.loading) return <div className="page wide">{head}<div className="spinner" role="status" aria-label="Loading" /></div>;
-  if (data.error && !all.length) return <div className="page wide">{head}<div className="panel glass"><p>{data.error}</p></div></div>;
-  if (!all.length) return (
-    <div className="page wide">{head}
-      <div className="panel glass"><div className="empty"><p>No tests yet. Finish one and your speed, accuracy and weak keys will show up here.</p><Link className="btn primary" to="/"><Keyboard size="1em" />Start typing</Link></div></div>
-    </div>
-  );
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'history'
+  const [historyView, setHistoryView] = useState('table'); // 'table' | 'timeline'
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [backendDays, setBackendDays] = useState(null);
+  const [filterDate, setFilterDate] = useState(null);
 
-  const agg = aggregate(all);
-  const avg = hist.length ? hist.reduce((a, h) => a + h.wpm, 0) / hist.length : 0;
-  const accAvg = hist.length ? hist.reduce((a, h) => a + h.acc, 0) / hist.length : 0;
-  const best = hist.reduce((m, h) => Math.max(m, h.wpm), 0);
-  const todaySec = all.filter(h => dayKey(h.date) === dayKey(Date.now())).reduce((a, h) => a + h.elapsed, 0);
-  const goalPct = clamp(todaySec / (settings.dailyGoal * 60) * 100, 0, 100);
-  const weak = weakKeys(data.keyStats, 5);
-  const pages = Math.max(1, Math.ceil(hist.length / 15));
-  const pg = clamp(page, 0, pages - 1);
-  const rows = hist.slice().reverse().slice(pg * 15, pg * 15 + 15);
+  // Fetch server-aggregated DailyActivity for authenticated users
+  useEffect(() => {
+    if (!auth.user) {
+      setBackendDays(null);
+      return;
+    }
 
-  const ma = hist.map((h, i) => { const s = hist.slice(Math.max(0, i - 9), i + 1); return s.reduce((a, x) => a + x.wpm, 0) / s.length; });
-  const lab = i => { const d = new Date(hist[i].date); return `${d.getMonth() + 1}/${d.getDate()}`; };
-  const tip = i => { const h = hist[i]; return `${esc(fmtDate(h.date, true))}<br><b>${Math.round(h.wpm)}</b> wpm, ${h.acc.toFixed(1)}%<br>${esc(testTypeParts(h).join(', '))}`; };
-  const accs = hist.map(h => h.acc);
+    let active = true;
+    api(`/activity/year/${selectedYear}`)
+      .then(res => {
+        if (active && res?.days) {
+          setBackendDays(res.days);
+        }
+      })
+      .catch(() => {
+        if (active) setBackendDays(null);
+      });
 
-  const bins = [];
-  if (hist.length) {
-    const lo = Math.floor(Math.min(...hist.map(h => h.wpm)) / 10) * 10, hi = Math.floor(Math.max(...hist.map(h => h.wpm)) / 10) * 10;
-    for (let b = lo; b <= hi; b += 10) { const v = hist.filter(h => h.wpm >= b && h.wpm < b + 10).length; bins.push({ v, label: String(b), title: `${v} test${v === 1 ? '' : 's'} at ${b} to ${b + 9} wpm`, hl: avg >= b && avg < b + 10 }); }
-  }
+    return () => { active = false; };
+  }, [auth.user, selectedYear]);
 
-  const counts = {}; all.forEach(h => { const k = dayKey(h.date); counts[k] = (counts[k] || 0) + 1; });
-  const today = new Date(); today.setHours(12, 0, 0, 0);
-  const startD = new Date(today); startD.setDate(startD.getDate() - (17 * 7 + today.getDay()));
-  const cells = Array.from({ length: 18 * 7 }, (_, i) => {
-    const d = new Date(startD); d.setDate(startD.getDate() + i);
-    const c = counts[dayKey(d)] || 0;
-    return { future: d > today, l: c === 0 ? 0 : c <= 2 ? 1 : c <= 5 ? 2 : c <= 9 ? 3 : 4, title: `${c} test${c === 1 ? '' : 's'} on ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}` };
-  });
+  // Build dailyMap: use backend aggregated days if available, otherwise aggregate locally from results
+  const dailyMap = useMemo(() => {
+    const map = {};
 
-  const t = resolveTheme(settings.theme);
-  const keyStyle = k => {
-    const v = data.keyStats[k];
-    if (!v || v.n < 3) return { title: `${k}: not enough data` };
-    const a = 1 - v.e / v.n, f = clamp((1 - a) / 0.12, 0, 1), col = mix(t[2], t[5], f);
-    const ms = v.mc ? Math.round(v.ms / v.mc) : null;
-    return { pct: Math.round(a * 100), style: { background: mix(t[1], col, 0.28 + f * 0.5), borderColor: col }, title: `${k}: ${(a * 100).toFixed(1)}% accurate over ${v.n} presses${ms ? `, ${ms} ms average` : ''}` };
-  };
+    if (backendDays && backendDays.length > 0) {
+      for (const d of backendDays) {
+        map[d.date] = d;
+      }
+      return map;
+    }
 
-  const practice = () => {
-    if (weak.length < 2) { ui.toast('Finish a few more tests so TypeFlow can find your weak keys.'); return; }
-    const keys = weak.slice(0, 4).map(w => w.k);
-    setCfg({ mode: 'custom', customText: practiceText(keys), customLabel: `practice: ${keys.join(', ')}` });
+    // Client-side fallback aggregation (works for guests, offline, or instant local reactivity)
+    for (const r of all) {
+      const dKey = dayKey(r.date);
+      const charsCount = r.chars
+        ? (r.chars.correct || 0) + (r.chars.incorrect || 0) + (r.chars.extra || 0)
+        : Math.round((r.wpm * 5 * r.elapsed) / 60);
+
+      if (!map[dKey]) {
+        map[dKey] = {
+          date: dKey,
+          tests: 1,
+          characters: charsCount,
+          typingTime: Math.round(r.elapsed),
+          bestWpm: r.wpm,
+          averageWpm: r.wpm,
+          averageAccuracy: r.acc,
+          achievements: []
+        };
+      } else {
+        const item = map[dKey];
+        const prevTests = item.tests;
+        const nextTests = prevTests + 1;
+        item.averageWpm = (item.averageWpm * prevTests + r.wpm) / nextTests;
+        item.averageAccuracy = (item.averageAccuracy * prevTests + r.acc) / nextTests;
+        item.bestWpm = Math.max(item.bestWpm, r.wpm);
+        item.characters += charsCount;
+        item.typingTime += Math.round(r.elapsed);
+        item.tests = nextTests;
+      }
+    }
+
+    return map;
+  }, [backendDays, all]);
+
+  // Overall summary statistics
+  const summaryStats = useMemo(() => {
+    let totalTests = all.length;
+    let totalTypingTime = 0;
+    let totalCharacters = 0;
+    let bestWpm = 0;
+    let wpmSum = 0;
+
+    for (const r of all) {
+      totalTypingTime += r.elapsed || 0;
+      totalCharacters += r.chars
+        ? (r.chars.correct || 0) + (r.chars.incorrect || 0) + (r.chars.extra || 0)
+        : Math.round((r.wpm * 5 * r.elapsed) / 60);
+      if (r.wpm > bestWpm) bestWpm = r.wpm;
+      wpmSum += r.wpm;
+    }
+
+    const averageWpm = totalTests > 0 ? wpmSum / totalTests : 0;
+    const { current, longest } = streaks(all);
+
+    return {
+      totalTests,
+      totalTypingTime: Math.round(totalTypingTime),
+      totalCharacters,
+      bestWpm: Math.round(bestWpm),
+      averageWpm: Math.round(averageWpm),
+      currentStreak: current,
+      longestStreak: longest
+    };
+  }, [all]);
+
+  const handlePracticeKeys = keys => {
+    if (!keys || keys.length === 0) return;
+    setCfg({
+      mode: 'custom',
+      customText: practiceText(keys),
+      customLabel: `practice: ${keys.join(', ')}`
+    });
     nav('/');
   };
+
+  const handleViewDayTests = dateStr => {
+    setFilterDate(dateStr);
+    setActiveTab('history');
+  };
+
   const exportAs = fmt => {
     if (fmt === 'csv') {
-      const lines = ['date,wpm,raw,accuracy,consistency,mode,length,punctuation,numbers,seconds', ...all.map(h => [new Date(h.date).toISOString(), h.wpm.toFixed(2), h.raw.toFixed(2), h.acc.toFixed(2), h.consistency.toFixed(1), h.mode, h.mode2 || '', h.punctuation, h.numbers, h.elapsed.toFixed(1)].join(','))];
-      download('typeflow-history.csv', lines.join('\n'), 'text/csv');
-    } else download('typeflow-history.json', JSON.stringify(all, null, 2), 'application/json');
+      const lines = [
+        'date,wpm,raw,accuracy,consistency,mode,length,punctuation,numbers,seconds',
+        ...all.map(h => [
+          new Date(h.date).toISOString(),
+          h.wpm.toFixed(2),
+          h.raw ? h.raw.toFixed(2) : h.wpm.toFixed(2),
+          h.acc.toFixed(2),
+          (h.consistency || 0).toFixed(1),
+          h.mode,
+          h.mode2 || '',
+          h.punctuation ? 'true' : 'false',
+          h.numbers ? 'true' : 'false',
+          h.elapsed.toFixed(1)
+        ].join(','))
+      ];
+      download('cadence-typing-history.csv', lines.join('\n'), 'text/csv');
+    } else {
+      download('cadence-typing-history.json', JSON.stringify(all, null, 2), 'application/json');
+    }
   };
-  const Seg = ({ v, children }) => <button aria-pressed={range === v} onClick={() => { setRange(v); setPage(0); }}>{children}</button>;
+
+  // Loading state
+  if (data.loading) {
+    return (
+      <div className="page wide activity-page">
+        <div className="activity-page-head">
+          <h1>Typing Activity</h1>
+          <p className="lede">Loading your typing journey...</p>
+        </div>
+        <div className="spinner" role="status" aria-label="Loading" />
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!all.length) {
+    return (
+      <div className="page wide activity-page">
+        <div className="activity-page-head">
+          <span className="cadence-kicker">cadence performance</span>
+          <h1>Typing Activity</h1>
+          <p className="lede">
+            {auth.user ? `Welcome, ${auth.user.username}.` : 'Your typing journey starts here.'}
+          </p>
+        </div>
+        <div className="panel glass activity-empty-state">
+          <div className="empty-content">
+            <span className="empty-icon-wrap">
+              <Keyboard size={36} />
+            </span>
+            <h3>Your typing journey starts here.</h3>
+            <p>Complete your first typing test to start building your activity history.</p>
+            <Link className="btn primary" to="/">
+              <Keyboard size={16} />
+              <span>Start Typing</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="page wide">
-      {head}
-      <div className="controls">
-        <div className="seg" role="group" aria-label="Date range"><Seg v="7">7 days</Seg><Seg v="30">30 days</Seg><Seg v="90">90 days</Seg><Seg v="all">all time</Seg></div>
-        <select className="select" aria-label="Test type" value={mode} onChange={e => { setMode(e.target.value); setPage(0); }}>
-          <option value="all">all tests</option>{modes.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </div>
-      <div className="panel glass">
-        <div className="stats">
-          <div><span>Tests</span><strong>{hist.length}</strong></div>
-          <div><span>Best wpm</span><strong>{Math.round(best)}</strong></div>
-          <div><span>Average wpm</span><strong>{Math.round(avg)}</strong></div>
-          <div><span>Accuracy</span><strong>{accAvg.toFixed(1)}%</strong></div>
-          <div><span>Time typing</span><strong>{fmtTime(hist.reduce((a, h) => a + h.elapsed, 0))}</strong></div>
-          <div><span>Day streak</span><strong>{agg.current}</strong></div>
+    <div className="page wide activity-page">
+      {/* Top Header & Navigation Tabs */}
+      <div className="activity-page-head">
+        <div className="activity-page-head-left">
+          <span className="cadence-kicker">cadence performance</span>
+          <h1>Typing Activity & Dashboard</h1>
+          <p className="lede">
+            {auth.user
+              ? `Every test you've finished as ${auth.user.username}.`
+              : <>Your guest activity in this browser. <Link to="/login" style={{ color: 'var(--accent)' }}>Log in</Link> to sync to your account.</>}
+          </p>
         </div>
-        <div style={{ marginTop: '1.25rem' }}>
-          <span className="muted" style={{ fontSize: '.85rem' }}>Today's goal: {fmtTime(todaySec)} of {settings.dailyGoal} minutes{goalPct >= 100 ? ', done' : ''}</span>
-          <div className="goal-bar"><span style={{ width: `${goalPct}%` }} /></div>
-        </div>
-      </div>
-      <div className="panel glass">
-        <h2><TrendingUp size="1em" />Speed over time<span className="aside">{hist.length} tests</span></h2>
-        <LineChart className="chart tall" deps={[hist]} options={{ n: hist.length, empty: 'Finish two tests in this range to see a trend.', label: 'Speed over time', xLabel: lab, tip,
-          series: [{ values: hist.map(h => h.raw), cls: 'g-second' }, { values: hist.map(h => h.wpm), cls: 'g-main', area: true, dots: true }, { values: ma, cls: 'g-third' }] }} />
-        <div className="legend"><span className="lg">wpm</span><span className="lg third">10 test average</span><span className="lg second">raw</span></div>
-      </div>
-      <div className="grid-2">
-        <div className="panel glass"><h2><Target size="1em" />Accuracy</h2>
-          <LineChart deps={[hist]} options={{ n: hist.length, label: 'Accuracy over time', min: Math.max(0, Math.min(90, Math.min(...accs) - 2)), max: 100, yFmt: v => Math.round(v) + '%', xLabel: lab, tip, series: [{ values: accs, cls: 'g-main', area: true, dots: true }] }} />
-        </div>
-        <div className="panel glass"><h2><ChartColumn size="1em" />Speed spread</h2><BarChart bins={bins} label="Speed spread" deps={[hist]} /></div>
-      </div>
-      <div className="grid-2">
-        <div className="panel glass">
-          <h2><CalendarDays size="1em" />Activity<span className="aside">longest streak {agg.longest} day{agg.longest === 1 ? '' : 's'}</span></h2>
-          <div className="cal">{cells.map((c, i) => <i key={i} data-l={c.l} className={c.future ? 'future' : undefined} title={c.title} />)}</div>
-          <div className="cal-legend">less <i style={{ background: 'var(--field)' }} /><i style={{ background: 'var(--accent)', opacity: 0.3 }} /><i style={{ background: 'var(--accent)', opacity: 0.55 }} /><i style={{ background: 'var(--accent)', opacity: 0.8 }} /><i style={{ background: 'var(--accent)' }} /> more</div>
-        </div>
-        <div className="panel glass">
-          <h2><Keyboard size="1em" />Key accuracy</h2>
-          <div className="kb">{KB_ROWS.map(row => (
-            <div className="kb-row" key={row}>{[...row].map(k => { const s = keyStyle(k); return <div className="key" key={k} style={s.style} title={s.title}>{k}{s.pct != null && <small>{s.pct}</small>}</div>; })}</div>
-          ))}</div>
-          {weak.length ? (
-            <>
-              <div className="weak-list">{weak.map(w => <span key={w.k}><b>{w.k}</b>{(w.acc * 100).toFixed(1)}%{w.ms ? `, ${Math.round(w.ms)} ms` : ''}</span>)}</div>
-              <button className="btn primary sm" onClick={practice}><Dumbbell size="1em" />Practice weak keys</button>
-            </>
-          ) : <p className="muted" style={{ marginTop: '1rem', fontSize: '.88rem' }}>Keys need a few more presses before weak spots show up.</p>}
+
+        <div className="activity-page-head-actions">
+          <button type="button" className="btn ghost sm" onClick={() => exportAs('csv')}>
+            <Download size={14} /> CSV
+          </button>
+          <button type="button" className="btn ghost sm" onClick={() => exportAs('json')}>
+            <Download size={14} /> JSON
+          </button>
         </div>
       </div>
-      <div className="panel glass">
-        <h2><History size="1em" />History
-          <span className="aside">
-            <button className="btn ghost sm" onClick={() => exportAs('csv')}><Download size="1em" />CSV</button>
-            <button className="btn ghost sm" onClick={() => exportAs('json')}><Download size="1em" />JSON</button>
-          </span>
-        </h2>
-        {rows.length ? (
-          <>
-            <div className="table-scroll"><table>
-              <thead><tr><th>Date</th><th>wpm</th><th>raw</th><th>accuracy</th><th>consistency</th><th>Test</th><th>Time</th></tr></thead>
-              <tbody>{rows.map((h, i) => (
-                <tr key={h.id || `${h.date}-${i}`}><td>{fmtDate(h.date, true)}</td><td className="hl">{Math.round(h.wpm)}</td><td className="n">{Math.round(h.raw)}</td><td className="n">{h.acc.toFixed(1)}%</td><td className="n">{Math.round(h.consistency)}%</td><td>{testTypeParts(h).join(', ')}</td><td className="n">{fmtTime(h.elapsed)}</td></tr>
-              ))}</tbody>
-            </table></div>
-            <div className="pager">
-              <span>Page {pg + 1} of {pages}</span>
-              <button className="icon-btn" aria-label="Previous page" disabled={pg === 0} onClick={() => setPage(pg - 1)}><ChevronLeft size="1em" /></button>
-              <button className="icon-btn" aria-label="Next page" disabled={pg >= pages - 1} onClick={() => setPage(pg + 1)}><ChevronRight size="1em" /></button>
+
+      {/* Tabs Switcher: Overview vs Test History */}
+      <div className="activity-tabs-bar">
+        <div className="activity-tabs-nav" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'overview'}
+            className={`activity-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            <BarChart3 size={16} />
+            <span>Activity & Insights</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'history'}
+            className={`activity-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            <HistoryIcon size={16} />
+            <span>Test History</span>
+          </button>
+        </div>
+
+        {activeTab === 'history' && (
+          <div className="activity-history-toggle">
+            <button
+              type="button"
+              className={`view-toggle-btn ${historyView === 'table' ? 'active' : ''}`}
+              onClick={() => setHistoryView('table')}
+            >
+              Table View
+            </button>
+            <button
+              type="button"
+              className={`view-toggle-btn ${historyView === 'timeline' ? 'active' : ''}`}
+              onClick={() => setHistoryView('timeline')}
+            >
+              Timeline View
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Main Tab Content */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'overview' ? (
+          <motion.div
+            key="overview"
+            variants={fadeIn}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="activity-content-stack"
+          >
+            {/* 1. Activity Summary Cards */}
+            <ActivitySummary {...summaryStats} />
+
+            {/* 2. Cadence Typing Activity Contribution Heatmap */}
+            <ActivityHeatmap
+              dailyMap={dailyMap}
+              selectedYear={selectedYear}
+              onYearChange={setSelectedYear}
+              onViewTests={handleViewDayTests}
+            />
+
+            {/* 3. Performance Trend SVG Chart & Streak System */}
+            <div className="activity-duo-grid">
+              <PerformanceTrend results={all} />
+              <TypingStreak
+                currentStreak={summaryStats.currentStreak}
+                longestStreak={summaryStats.longestStreak}
+                results={all}
+              />
             </div>
-          </>
-        ) : <p className="muted">No tests in this range.</p>}
-      </div>
+
+            {/* 4. "How You Type" & Code Typing Activity */}
+            <div className="activity-duo-grid">
+              <HowYouType
+                keyStats={data.keyStats}
+                results={all}
+                onPractice={handlePracticeKeys}
+              />
+              <LanguageActivity results={all} />
+            </div>
+
+            {/* 5. Achievement Activity */}
+            <AchievementActivity results={all} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="history"
+            variants={fadeIn}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="activity-history-stack"
+          >
+            {historyView === 'table' ? (
+              <TestHistoryList
+                results={all}
+                initialFilterDate={filterDate}
+                onClearDateFilter={() => setFilterDate(null)}
+              />
+            ) : (
+              <TestHistoryTimeline results={all} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
