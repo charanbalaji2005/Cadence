@@ -69,7 +69,9 @@ function ActivityCell({
     const rect = e.currentTarget.getBoundingClientRect();
     onHover?.(day, {
       x: rect.left + rect.width / 2,
-      y: rect.top
+      y: rect.top,
+      bottom: rect.bottom,
+      height: rect.height
     });
   };
 
@@ -77,7 +79,9 @@ function ActivityCell({
     const rect = e.currentTarget.getBoundingClientRect();
     onHover?.(day, {
       x: rect.left + rect.width / 2,
-      y: rect.top
+      y: rect.top,
+      bottom: rect.bottom,
+      height: rect.height
     });
   };
 

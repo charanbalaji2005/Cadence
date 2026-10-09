@@ -89,21 +89,58 @@ app.all('/api/wake', (req, res) => {
 });
 
 app.get('/api/notifications', (req, res) => {
+  const inbox = [
+    {
+      id: 'mail-welcome',
+      category: 'Cadence Team',
+      title: 'Welcome to Cadence!',
+      content: 'Master your typing rhythm, discover daily streaks, and race against typists in real-time.',
+      time: 'Just now',
+      read: false,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'mail-tips',
+      category: 'Pro Tips',
+      title: 'Rhythm over raw speed',
+      content: 'Maintaining a steady pace prevents keystroke errors and maximizes your consistency rating.',
+      time: '1d ago',
+      read: false,
+      createdAt: new Date(Date.now() - 86400000).toISOString()
+    }
+  ];
+
+  const announcements = [
+    {
+      id: 'ann-cadence-v2',
+      category: 'Release',
+      title: 'Cadence v2.0 Platform Update',
+      content: 'Live multiplayer race rooms, typing heatmaps, and public player profiles are now active!',
+      time: '2d ago',
+      createdAt: new Date(Date.now() - 172800000).toISOString()
+    }
+  ];
+
+  const notifications = [
+    {
+      id: 'notif-init-1',
+      category: 'Success',
+      title: 'Account created',
+      content: 'Your account was created successfully.',
+      type: 'success',
+      time: 'Just now',
+      read: false,
+      createdAt: new Date().toISOString()
+    }
+  ];
+
+  const unreadCount = inbox.filter(i => !i.read).length + notifications.filter(n => !n.read).length;
+
   res.json({
-    inbox: [],
-    announcements: [],
-    notifications: [
-      {
-        id: 'notif-init-1',
-        category: 'Success',
-        title: 'Account created',
-        content: 'Your account was created successfully.',
-        type: 'success',
-        time: 'Just now',
-        read: false
-      }
-    ],
-    unreadCount: 0,
+    inbox,
+    announcements,
+    notifications,
+    unreadCount,
     totalCount: 25
   });
 });

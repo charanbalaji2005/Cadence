@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { UserPlus, Swords, MoreHorizontal, UserMinus, Ban, Check, X, Users, LogIn } from 'lucide-react';
+import { UserPlus, Swords, MoreHorizontal, UserMinus, Ban, Check, X, Users, LogIn, UserRound, Copy } from 'lucide-react';
 import Avatar from '../components/Avatar.jsx';
 import AddFriendModal from '../components/friends/AddFriendModal.jsx';
 import { api } from '../lib/api.js';
@@ -11,7 +11,7 @@ import { useCompete } from '../context/CompeteContext.jsx';
 
 const POLL_MS = 30000;
 
-function RowMenu({ friend, onRemove, onBlock }) {
+function RowMenu({ friend, onRemove, onBlock, onCopyLink }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -27,6 +27,8 @@ function RowMenu({ friend, onRemove, onBlock }) {
       <button type="button" className="icon-btn" aria-haspopup="menu" aria-expanded={open} aria-label={`More options for ${friend.username}`} onClick={() => setOpen(o => !o)}><MoreHorizontal size="1em" /></button>
       {open && (
         <div className="menu fr-menu" role="menu">
+          <Link role="menuitem" to={`/profile/${friend.username}`} onClick={() => setOpen(false)}><UserRound size="1em" />View profile</Link>
+          <button role="menuitem" type="button" onClick={() => { setOpen(false); onCopyLink(); }}><Copy size="1em" />Copy profile link</button>
           <button role="menuitem" type="button" onClick={() => { setOpen(false); onRemove(); }}><UserMinus size="1em" />Remove friend</button>
           <button role="menuitem" type="button" onClick={() => { setOpen(false); onBlock(); }}><Ban size="1em" />Block</button>
         </div>
@@ -145,13 +147,30 @@ export default function FriendsPage() {
             <AnimatePresence initial={false}>
               {friends.map((f, i) => (
                 <motion.li key={f.id} layout={!reduce} {...rowMotion(i)}>
-                  <span className="cp-av-wrap"><Avatar name={f.username} url={f.avatar} /><span className={`cp-presence${f.online ? ' on' : ''}`} aria-hidden="true" /></span>
-                  <span className="fr-name">{f.username}<small className={f.online ? 'on' : ''}>{f.online ? 'Online' : 'Offline'}</small></span>
+                  <Link to={`/profile/${f.username}`} className="cp-av-wrap" title={`View ${f.username}'s public profile`}>
+                    <Avatar name={f.username} url={f.avatar} />
+                    <span className={`cp-presence${f.online ? ' on' : ''}`} aria-hidden="true" />
+                  </Link>
+                  <span className="fr-name">
+                    <Link to={`/profile/${f.username}`} style={{ color: 'inherit', textDecoration: 'none' }} title={`View ${f.username}'s public profile`}>
+                      {f.username}
+                    </Link>
+                    <small className={f.online ? 'on' : ''}>{f.online ? 'Online' : 'Offline'}</small>
+                  </span>
                   <div className="fr-actions">
                     <motion.button type="button" className="btn outline sm" whileTap={{ scale: 0.96 }} onClick={() => compete.challenge(f)} aria-label={`Compete with ${f.username}`}>
                       <Swords size="1em" />Compete
                     </motion.button>
-                    <RowMenu friend={f} onRemove={() => remove(f)} onBlock={() => block(f)} />
+                    <RowMenu
+                      friend={f}
+                      onRemove={() => remove(f)}
+                      onBlock={() => block(f)}
+                      onCopyLink={() => {
+                        const url = `https://cadence-wj7c.onrender.com/profile/${f.username}`;
+                        if (navigator.clipboard) navigator.clipboard.writeText(url);
+                        ui.toast(`Copied ${f.username}'s profile link! 📋`);
+                      }}
+                    />
                   </div>
                 </motion.li>
               ))}

@@ -510,27 +510,108 @@ body:not([data-route="/"]) .hints{display:none}
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.25); opacity: 0.85; }
 }
+/* Backdrop scrim */
+.notif-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 9998;
+}
+
+/* Right-side docked drawer matching Image 2 */
 .notif-center-panel {
-  position: absolute;
-  top: calc(100% + 12px);
+  position: fixed;
+  top: 0;
   right: 0;
-  width: 295px;
-  background: var(--bg-2); /* 100% ADAPTIVE: seamlessly matches the website's active theme! */
-  border: 1px solid var(--hairline);
-  border-radius: 18px;
-  padding: 1.25rem 1.15rem 0.85rem;
-  box-shadow: var(--shadow);
-  z-index: 120;
+  bottom: 0;
+  width: 340px;
+  max-width: 90vw;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg-2); /* 100% ADAPTIVE to active theme */
+  border-left: 1px solid var(--hairline);
+  padding: 1.5rem 1.35rem 1.25rem;
+  box-shadow: -10px 0 36px rgba(0, 0, 0, 0.38);
+  z-index: 9999;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  overflow-y: auto;
+  overflow-x: hidden;
   color: var(--text);
-  animation: notifDropIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-type);
 }
-@keyframes notifDropIn {
-  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+
+/* Mobile top bar with Back button */
+.notif-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.15rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--hairline);
+}
+.notif-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--field);
+  border: 1px solid var(--hairline);
+  color: var(--text);
+  font-family: var(--font-type);
+  font-size: 0.84rem;
+  font-weight: 500;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.notif-back-btn:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.notif-top-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--sub);
+  letter-spacing: 0.02em;
+}
+.notif-close-icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--sub);
+  cursor: pointer;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.notif-close-icon-btn:hover {
+  color: var(--text);
+  background: var(--field);
+}
+
+@media (min-width: 769px) {
+  .notif-top-bar {
+    display: none; /* In laptop, Image 2 starts straight from Inbox header */
+  }
+}
+
+@media (max-width: 768px) {
+  .notif-center-panel {
+    /* Mobile: opens half screen on the page with back button */
+    width: 60vw;
+    min-width: 290px;
+    max-width: 85vw;
+    padding: 1.15rem 1rem 1rem;
+    box-shadow: -14px 0 44px rgba(0, 0, 0, 0.55);
+  }
+  .notif-top-bar {
+    display: flex;
+  }
 }
 .notif-section {
   display: flex;
@@ -866,6 +947,224 @@ body:not([data-route="/"]) .hints{display:none}
   color: var(--sub);
   text-align: center;
   margin: 0.85rem 0 0;
+}
+
+/* ==========================================================
+   PUBLIC PROFILE & PROFILE LINK SYSTEM
+   ========================================================== */
+.public-link-card {
+  margin: 1.25rem 0;
+  padding: 1.35rem 1.45rem;
+  border-radius: 18px;
+}
+.public-link-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+.public-link-info h3 {
+  margin: 0.2rem 0 0.25rem;
+  font-size: 1.12rem;
+  font-weight: 600;
+}
+.public-link-desc {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--sub);
+  line-height: 1.4;
+}
+.public-link-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.public-link-input-wrap {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: var(--field);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  transition: border-color 0.15s;
+}
+.public-link-input-wrap:focus-within {
+  border-color: var(--accent);
+}
+.public-link-icon {
+  color: var(--sub);
+  flex-shrink: 0;
+}
+.public-link-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-type);
+  font-size: 0.84rem;
+  color: var(--text);
+  width: 100%;
+}
+.player-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  text-decoration: none;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 2px 4px;
+  transition: all 0.15s ease;
+}
+.player-link:hover {
+  background: var(--field);
+  color: var(--accent);
+}
+.player-link-copy-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--sub);
+  cursor: pointer;
+  padding: 2px;
+  margin-left: 2px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+tr:hover .player-link-copy-btn {
+  opacity: 0.85;
+}
+.player-link-copy-btn:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* Public Profile Page Layout */
+.profile-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding-bottom: 3.5rem;
+}
+.profile-banner-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.85rem 2rem;
+  border-radius: 20px;
+  margin-bottom: 1.4rem;
+  flex-wrap: wrap;
+}
+.profile-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 1.35rem;
+}
+.profile-meta h1 {
+  font-size: 1.85rem;
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+.profile-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.profile-role-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.profile-joined-text {
+  font-size: 0.83rem;
+  color: var(--sub);
+}
+.profile-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.profile-share-box {
+  padding: 1.15rem 1.45rem;
+  border-radius: 16px;
+  margin-bottom: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.profile-share-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.profile-share-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.profile-share-label {
+  font-size: 0.76rem;
+  color: var(--sub);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+}
+.profile-share-url {
+  font-family: var(--font-type);
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 600;
+  word-break: break-all;
+}
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+}
+.profile-stat-box {
+  padding: 1.25rem 1.1rem;
+  border-radius: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.profile-stat-label {
+  font-size: 0.76rem;
+  color: var(--sub);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+.profile-stat-val {
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-family: var(--font-type);
+  color: var(--text);
+  line-height: 1.1;
+}
+.profile-stat-unit {
+  font-size: 0.82rem;
+  color: var(--sub);
+  font-weight: 400;
+  margin-left: 2px;
 }
 
 /* ==========================================================
@@ -1232,14 +1531,16 @@ body:not([data-route="/"]) .hints{display:none}
 
 /* Tooltip */
 .activity-tooltip {
-  min-width: 200px;
-  padding: 0.75rem 0.95rem;
-  border-radius: 12px;
-  background: var(--card);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--hairline-strong);
+  min-width: 210px;
+  padding: 0.85rem 1.05rem;
+  border-radius: 14px;
+  background: var(--bg-2);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--hairline);
   color: var(--text);
   font-family: var(--font-ui);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .activity-tooltip-date {
   font-size: 0.78rem;
@@ -1287,20 +1588,26 @@ body:not([data-route="/"]) .hints{display:none}
 .activity-panel-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.68);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: grid;
   place-items: center;
-  z-index: 1000;
+  z-index: 10000;
   padding: 1.5rem;
+  overflow-y: auto;
 }
 .activity-detail-modal {
   width: 100%;
   max-width: 480px;
+  background: var(--bg-2); /* 100% opaque adaptive background */
+  border: 1px solid var(--hairline);
+  color: var(--text);
   border-radius: 22px;
   padding: 1.75rem;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .activity-detail-header {
   display: flex;

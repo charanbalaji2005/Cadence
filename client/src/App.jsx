@@ -27,6 +27,7 @@ import { trackPage, trackErrors } from './lib/tracker.js';
 const FriendsPage = lazy(() => import('./pages/FriendsPage.jsx'));
 const CompetePage = lazy(() => import('./pages/CompetePage.jsx'));
 const RoomPage = lazy(() => import('./pages/RoomPage.jsx'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
 const page = el => <Suspense fallback={<div className="spinner" role="status" aria-label="Loading" />}>{el}</Suspense>;
 // The admin panel is its own chunk: regular visitors never download it.
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
@@ -129,6 +130,8 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/profile/:username" element={page(<ProfilePage />)} />
+            <Route path="/u/:username" element={page(<ProfilePage />)} />
             <Route path="/friends" element={page(<FriendsPage />)} />
             <Route path="/compete" element={page(<CompetePage />)} />
             <Route path="/compete/join/:code" element={page(<RoomPage />)} />

@@ -129,7 +129,8 @@ export default function Header({ onBrand }) {
                 <Link role="menuitem" to="/friends"><Users size="1em" />Friends{requests > 0 && <span className="menu-count" aria-label={`${requests} pending`}>{requests}</span>}</Link>
                 <Link role="menuitem" to="/compete"><Swords size="1em" />Compete</Link>
                 <hr />
-                <Link role="menuitem" to="/account"><UserRound size="1em" />Account</Link>
+                <Link role="menuitem" to={`/profile/${auth.user.username}`}><UserRound size="1em" />Public profile</Link>
+                <Link role="menuitem" to="/account"><Settings size="1em" />Account settings</Link>
                 <Link role="menuitem" to="/stats"><ChartLine size="1em" />Stats and history</Link>
                 <Link role="menuitem" to="/leaderboard"><Crown size="1em" />Leaderboard</Link>
                 <Link role="menuitem" to="/settings"><Settings size="1em" />Settings</Link>

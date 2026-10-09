@@ -144,9 +144,39 @@ router.get('/:username', async (req, res) => {
       .limit(500)
       .lean();
 
+    const resultsCount = results.length;
+    let bestWpm = 0;
+    let totalWpm = 0;
+    let totalAcc = 0;
+    let totalTime = 0;
+
+    for (const r of results) {
+      const w = Number(r.wpm) || 0;
+      if (w > bestWpm) bestWpm = w;
+      totalWpm += w;
+      totalAcc += Number(r.acc) || 0;
+      totalTime += Number(r.time) || (r.mode === 'time' ? Number(r.modeValue) || 15 : 15);
+    }
+
+    const avgWpm = resultsCount ? Math.round(totalWpm / resultsCount) : 0;
+    const avgAcc = resultsCount ? Math.round((totalAcc / resultsCount) * 10) / 10 : 0;
+
+    const publicUser = user.toPublic();
+    // Do not leak user email to public viewers
+    if (!req.user || req.user._id.toString() !== user._id.toString()) {
+      delete publicUser.email;
+    }
+
     return res.json({
-      user: user.toPublic(),
-      resultsCount: results.length,
+      user: publicUser,
+      stats: {
+        resultsCount,
+        bestWpm: Math.round(bestWpm),
+        avgWpm,
+        avgAcc,
+        totalTime: Math.round(totalTime)
+      },
+      resultsCount,
       recentResults: results.slice(0, 50)
     });
   } catch (err) {

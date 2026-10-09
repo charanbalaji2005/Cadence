@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ShieldCheck, ChartLine, LogOut, Award, Save, MonitorSmartphone, Trash2 } from 'lucide-react';
+import { ShieldCheck, ChartLine, LogOut, Award, Save, MonitorSmartphone, Trash2, Copy, Check, Globe, ExternalLink } from 'lucide-react';
 import Avatar from '../components/Avatar.jsx';
 import Badge from '../components/Badge.jsx';
 import { ACHIEVEMENTS, aggregate, unlockedIds } from '../lib/achievements.js';
@@ -18,6 +18,7 @@ export default function AccountPage() {
   const [name, setName] = useState(auth.user?.username || '');
   const [nameMsg, setNameMsg] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   if (auth.ready && !auth.user) return <Navigate to="/login" replace />;
   if (!auth.user) return null;
 
@@ -57,8 +58,51 @@ export default function AccountPage() {
           <p><ShieldCheck size="1em" style={{ verticalAlign: '-2px' }} /> {session}</p>
         </div>
         <div className="actions">
+          <Link className="btn outline" to={`/profile/${u.username}`}><ExternalLink size="1em" />Public profile</Link>
           <Link className="btn outline" to="/stats"><ChartLine size="1em" />Stats</Link>
           <button type="button" className="btn ghost" onClick={signOut}><LogOut size="1em" />Sign out</button>
+        </div>
+      </div>
+
+      {/* Public Profile Link Banner */}
+      <div className="panel glass public-link-card">
+        <div className="public-link-head">
+          <div className="public-link-info">
+            <span className="cadence-kicker">public profile</span>
+            <h3>Public Profile Link</h3>
+            <p className="public-link-desc">Share your Cadence profile with other typists to show your speed, accuracy, and test history.</p>
+          </div>
+          <Link className="btn outline sm" to={`/profile/${u.username}`}>
+            <ExternalLink size="1em" /> View profile
+          </Link>
+        </div>
+        <div className="public-link-bar">
+          <div className="public-link-input-wrap">
+            <Globe size={16} className="public-link-icon" />
+            <input
+              type="text"
+              readOnly
+              value={`https://cadence-wj7c.onrender.com/profile/${u.username}`}
+              className="public-link-input"
+              onClick={e => e.target.select()}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn primary sm"
+            onClick={() => {
+              const url = `https://cadence-wj7c.onrender.com/profile/${u.username}`;
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(url);
+              }
+              setCopiedLink(true);
+              ui.toast('Public profile link copied! 📋');
+              setTimeout(() => setCopiedLink(false), 2200);
+            }}
+          >
+            {copiedLink ? <Check size="1em" /> : <Copy size="1em" />}
+            <span>{copiedLink ? 'Copied' : 'Copy link'}</span>
+          </button>
         </div>
       </div>
       <div className="panel glass">

@@ -1,5 +1,5 @@
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { tooltipVariant } from '../../animations/variants.js';
 
 function formatDuration(sec = 0) {
   if (!sec) return '0s';
@@ -25,65 +25,79 @@ export default function ActivityTooltip({ activeData, position }) {
 
   const { date, tests, averageWpm, bestWpm, averageAccuracy, typingTime, characters, achievements } = activeData;
 
-  // Clamp style coordinates so tooltip doesn't clip screen
-  const style = {
-    position: 'fixed',
-    left: `${Math.max(12, Math.min(window.innerWidth - 240, position.x))}px`,
-    top: `${Math.max(12, position.y - 12)}px`,
-    transform: 'translate(-50%, -100%)',
-    pointerEvents: 'none',
-    zIndex: 9999
-  };
+  const tooltipWidth = 220;
+  const margin = 16;
+  const clampedX = Math.max(
+    tooltipWidth / 2 + margin,
+    Math.min(window.innerWidth - tooltipWidth / 2 - margin, position.x)
+  );
 
-  return (
-    <AnimatePresence>
-      <motion.div
-        variants={tooltipVariant}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        style={style}
-        className="activity-tooltip glass"
-        role="tooltip"
-      >
-        <div className="activity-tooltip-date">{formatDate(date)}</div>
+  // If cell is near the top of the viewport, place tooltip below the cell; otherwise above
+  const showBelow = position.y < 230;
+  const targetY = showBelow
+    ? (position.bottom || position.y + 16) + 10
+    : position.y - 10;
 
-        {tests > 0 ? (
-          <div className="activity-tooltip-body">
-            <div className="activity-tooltip-headline">
-              <span className="activity-tooltip-badge">{tests} test{tests === 1 ? '' : 's'}</span>
-              {achievements && achievements.length > 0 && (
-                <span className="activity-tooltip-ach-badge">🏆 {achievements.length}</span>
-              )}
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        left: `${clampedX}px`,
+        top: `${targetY}px`,
+        transform: showBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+        pointerEvents: 'none',
+        zIndex: 999999
+      }}
+    >
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.94, y: showBelow ? -6 : 6 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.94, y: showBelow ? -4 : 4 }}
+          transition={{ duration: 0.14, ease: 'easeOut' }}
+          className="activity-tooltip"
+          role="tooltip"
+        >
+          <div className="activity-tooltip-date">{formatDate(date)}</div>
+
+          {tests > 0 ? (
+            <div className="activity-tooltip-body">
+              <div className="activity-tooltip-headline">
+                <span className="activity-tooltip-badge">{tests} test{tests === 1 ? '' : 's'}</span>
+                {achievements && achievements.length > 0 && (
+                  <span className="activity-tooltip-ach-badge">🏆 {achievements.length}</span>
+                )}
+              </div>
+
+              <div className="activity-tooltip-grid">
+                <div className="activity-tooltip-row">
+                  <span>Avg WPM</span>
+                  <strong>{Math.round(averageWpm)}</strong>
+                </div>
+                <div className="activity-tooltip-row">
+                  <span>Best WPM</span>
+                  <strong>{Math.round(bestWpm)}</strong>
+                </div>
+                <div className="activity-tooltip-row">
+                  <span>Accuracy</span>
+                  <strong>{averageAccuracy ? `${averageAccuracy.toFixed(1)}%` : '--'}</strong>
+                </div>
+                <div className="activity-tooltip-row">
+                  <span>Typing Time</span>
+                  <strong>{formatDuration(typingTime)}</strong>
+                </div>
+                <div className="activity-tooltip-row">
+                  <span>Characters</span>
+                  <strong>{(characters || 0).toLocaleString()}</strong>
+                </div>
+              </div>
             </div>
-
-            <div className="activity-tooltip-grid">
-              <div className="activity-tooltip-row">
-                <span>Avg WPM</span>
-                <strong>{Math.round(averageWpm)}</strong>
-              </div>
-              <div className="activity-tooltip-row">
-                <span>Best WPM</span>
-                <strong>{Math.round(bestWpm)}</strong>
-              </div>
-              <div className="activity-tooltip-row">
-                <span>Accuracy</span>
-                <strong>{averageAccuracy ? `${averageAccuracy.toFixed(1)}%` : '--'}</strong>
-              </div>
-              <div className="activity-tooltip-row">
-                <span>Typing Time</span>
-                <strong>{formatDuration(typingTime)}</strong>
-              </div>
-              <div className="activity-tooltip-row">
-                <span>Characters</span>
-                <strong>{(characters || 0).toLocaleString()}</strong>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="activity-tooltip-empty">No activity recorded</div>
-        )}
-      </motion.div>
-    </AnimatePresence>
+          ) : (
+            <div className="activity-tooltip-empty">No activity recorded</div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>,
+    document.body
   );
 }

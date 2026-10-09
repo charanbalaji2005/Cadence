@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, Play, Trophy, Keyboard, RefreshCw } from 'lucide-react';
+import { Eye, Play, Trophy, Keyboard, RefreshCw, Copy } from 'lucide-react';
 import Avatar from '../components/Avatar.jsx';
 import { api } from '../lib/api.js';
 import { fmtDate } from '../lib/format.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useUI } from '../context/UIContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
 export default function LeaderboardPage() {
   const auth = useAuth();
+  const ui = useUI();
   const { setCfg } = useSettings();
   const nav = useNavigate();
   const [length, setLength] = useState('15');
@@ -71,7 +73,34 @@ export default function LeaderboardPage() {
             <tbody>{data.entries.map((e, i) => (
               <tr key={e.userId} className={e.userId === myId ? 'me' : ''}>
                 <td><span className={`rank${i < 3 ? ' r' + (i + 1) : ''}`}>{i + 1}</span></td>
-                <td><span className="player"><Avatar name={e.username} url={e.avatar} size="sm" />{e.username}{e.userId === myId && <span className="you">you</span>}</span></td>
+                <td>
+                  <span className="player">
+                    <Link
+                      to={`/profile/${e.username}`}
+                      className="player-link"
+                      title={`View ${e.username}'s public profile`}
+                    >
+                      <Avatar name={e.username} url={e.avatar} size="sm" />
+                      <span>{e.username}</span>
+                    </Link>
+                    {e.userId === myId && <span className="you">you</span>}
+                    <button
+                      type="button"
+                      className="player-link-copy-btn"
+                      title={`Copy ${e.username}'s public profile link`}
+                      aria-label={`Copy ${e.username}'s public profile link`}
+                      onClick={(ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        const url = `https://cadence-wj7c.onrender.com/profile/${e.username}`;
+                        if (navigator.clipboard) navigator.clipboard.writeText(url);
+                        ui.toast(`Copied ${e.username}'s profile link! 📋`);
+                      }}
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </span>
+                </td>
                 <td className="hl">{Math.round(e.wpm)}</td><td className="n">{e.acc.toFixed(1)}%</td><td className="n">{Math.round(e.raw)}</td><td className="n">{Math.round(e.consistency)}%</td><td>{fmtDate(e.date)}</td>
               </tr>
             ))}</tbody>

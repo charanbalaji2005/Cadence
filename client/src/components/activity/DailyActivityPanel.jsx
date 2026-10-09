@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Calendar, Activity, Trophy, Gauge, Target, Timer, Type, ArrowRight } from 'lucide-react';
 import { modalVariant, backdropVariant } from '../../animations/variants.js';
@@ -50,15 +51,22 @@ export default function DailyActivityPanel({
     achievements = []
   } = selectedDay;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="activity-panel-backdrop" onClick={onClose}>
+      <motion.div
+        variants={backdropVariant}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        className="activity-panel-backdrop"
+        onClick={onClose}
+      >
         <motion.div
           variants={modalVariant}
           initial="initial"
           animate="animate"
           exit="exit"
-          className="activity-detail-modal glass"
+          className="activity-detail-modal"
           onClick={e => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -156,7 +164,8 @@ export default function DailyActivityPanel({
             </button>
           )}
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   );
 }

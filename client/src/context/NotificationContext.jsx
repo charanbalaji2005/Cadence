@@ -36,19 +36,43 @@ export function NotificationProvider({ children }) {
     } catch {}
   }, [data]);
 
-  // Sync initial notifications from server only if user has not stored local state
+  // Sync initial notifications & mails from server, merging backend mails
   useEffect(() => {
     let active = true;
-    const saved = localStorage.getItem('cadence_notifications_v1');
-    if (saved) return;
 
     api('/notifications')
       .then(serverData => {
         if (!active || !serverData) return;
-        setData(prev => ({
-          ...prev,
-          ...serverData
-        }));
+        setData(prev => {
+          let dismissed = [];
+          try {
+            dismissed = JSON.parse(localStorage.getItem('cadence_dismissed_notifs_v1') || '[]');
+          } catch {}
+          const dismissedSet = new Set(dismissed);
+
+          const existingInboxIds = new Set((prev.inbox || []).map(i => i.id));
+          const newInboxItems = (serverData.inbox || []).filter(i => !existingInboxIds.has(i.id) && !dismissedSet.has(i.id));
+          const mergedInbox = [...(prev.inbox || []), ...newInboxItems];
+
+          const existingAnnIds = new Set((prev.announcements || []).map(a => a.id));
+          const newAnnItems = (serverData.announcements || []).filter(a => !existingAnnIds.has(a.id) && !dismissedSet.has(a.id));
+          const mergedAnnouncements = [...(prev.announcements || []), ...newAnnItems];
+
+          const existingNotifIds = new Set((prev.notifications || []).map(n => n.id));
+          const newNotifItems = (serverData.notifications || []).filter(n => !existingNotifIds.has(n.id) && !dismissedSet.has(n.id));
+          const mergedNotifications = [...(prev.notifications || []), ...newNotifItems];
+
+          const unread = mergedNotifications.filter(n => !n.read).length + mergedInbox.filter(i => !i.read).length;
+
+          return {
+            ...prev,
+            inbox: mergedInbox,
+            announcements: mergedAnnouncements,
+            notifications: mergedNotifications,
+            unreadCount: unread,
+            totalCount: Math.max(25, mergedInbox.length + mergedNotifications.length)
+          };
+        });
       })
       .catch(() => {});
     return () => { active = false; };
@@ -99,6 +123,13 @@ export function NotificationProvider({ children }) {
   }, []);
 
   const clearNotification = useCallback((id) => {
+    try {
+      const dismissed = JSON.parse(localStorage.getItem('cadence_dismissed_notifs_v1') || '[]');
+      if (!dismissed.includes(id)) {
+        dismissed.push(id);
+        localStorage.setItem('cadence_dismissed_notifs_v1', JSON.stringify(dismissed));
+      }
+    } catch {}
     setData(prev => {
       const nextList = (prev.notifications || []).filter(n => n.id !== id);
       const nextInbox = (prev.inbox || []).filter(i => i.id !== id);
@@ -113,12 +144,18 @@ export function NotificationProvider({ children }) {
   }, []);
 
   const clearAll = useCallback(() => {
-    setData(prev => ({
-      ...prev,
-      notifications: [],
-      inbox: [],
-      unreadCount: 0
-    }));
+    setData(prev => {
+      try {
+        const allIds = [...(prev.notifications || []).map(n => n.id), ...(prev.inbox || []).map(i => i.id)];
+        localStorage.setItem('cadence_dismissed_notifs_v1', JSON.stringify(allIds));
+      } catch {}
+      return {
+        ...prev,
+        notifications: [],
+        inbox: [],
+        unreadCount: 0
+      };
+    });
   }, []);
 
   return (
