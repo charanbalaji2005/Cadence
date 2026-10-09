@@ -14,6 +14,9 @@ export default function NotificationCenter({ isOpen, onClose }) {
     totalCount = 25,
     markAsRead,
     clearNotification,
+    clearInbox,
+    clearAnnouncements,
+    clearNotifications,
     clearAll
   } = useNotifications();
 
@@ -96,6 +99,20 @@ export default function NotificationCenter({ isOpen, onClose }) {
                   <span className="notif-label">Inbox</span>
                 </div>
                 <div className="notif-header-right">
+                  {inbox && inbox.length > 0 && (
+                    <button
+                      type="button"
+                      className="notif-clear-all-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearInbox();
+                      }}
+                      aria-label="Clear all inbox messages"
+                      title="Clear all inbox messages"
+                    >
+                      Clear all
+                    </button>
+                  )}
                   <span className={`notif-counter${unreadCount > 0 ? ' has-unread' : ''}`}>
                     {unreadCount}/{totalCount}
                   </span>
@@ -161,19 +178,55 @@ export default function NotificationCenter({ isOpen, onClose }) {
                   <Megaphone size={18} className="notif-icon" />
                   <span className="notif-label">Announcements</span>
                 </div>
+                {announcements && announcements.length > 0 && (
+                  <button
+                    type="button"
+                    className="notif-clear-all-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearAnnouncements();
+                    }}
+                    aria-label="Clear all announcements"
+                    title="Clear all announcements"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
               <div className="notif-content">
                 {announcements && announcements.length > 0 ? (
                   <ul className="notif-list">
-                    {announcements.map(item => (
-                      <li key={item.id} className="notif-item">
-                        <div className="notif-item-body">
-                          <span className="notif-status-tag">{item.category || 'Cadence'}</span>
-                          <div className="notif-item-title">{item.title}</div>
-                          {item.content && <div className="notif-item-desc">{item.content}</div>}
-                        </div>
-                      </li>
-                    ))}
+                    <AnimatePresence initial={false}>
+                      {announcements.map(item => (
+                        <motion.li
+                          key={item.id}
+                          layout
+                          initial={{ opacity: 0, height: 0, y: -4 }}
+                          animate={{ opacity: 1, height: 'auto', y: 0 }}
+                          exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                          transition={{ duration: 0.16 }}
+                          className="notif-item"
+                        >
+                          <div className="notif-item-body">
+                            <span className="notif-status-tag">{item.category || 'Cadence'}</span>
+                            <div className="notif-item-title">{item.title}</div>
+                            {item.content && <div className="notif-item-desc">{item.content}</div>}
+                          </div>
+                          <button
+                            type="button"
+                            className="notif-item-clear-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              clearNotification(item.id);
+                            }}
+                            aria-label={`Dismiss announcement: ${item.title}`}
+                            title="Clear message"
+                          >
+                            <X size={13} strokeWidth={2.4} />
+                          </button>
+                        </motion.li>
+                      ))}
+                    </AnimatePresence>
                   </ul>
                 ) : (
                   <p className="notif-empty">Nothing to show</p>
@@ -196,7 +249,7 @@ export default function NotificationCenter({ isOpen, onClose }) {
                     className="notif-clear-all-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      clearAll();
+                      clearNotifications();
                     }}
                     aria-label="Clear all notifications"
                     title="Clear all notifications"

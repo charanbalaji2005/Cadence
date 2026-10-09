@@ -112,11 +112,13 @@ export function NotificationProvider({ children }) {
 
   const markAsRead = useCallback((id) => {
     setData(prev => {
-      const nextList = prev.notifications.map(n => n.id === id ? { ...n, read: true } : n);
-      const unread = nextList.filter(n => !n.read).length;
+      const nextList = (prev.notifications || []).map(n => n.id === id ? { ...n, read: true } : n);
+      const nextInbox = (prev.inbox || []).map(i => i.id === id ? { ...i, read: true } : i);
+      const unread = nextList.filter(n => !n.read).length + nextInbox.filter(i => !i.read).length;
       return {
         ...prev,
         notifications: nextList,
+        inbox: nextInbox,
         unreadCount: unread
       };
     });
@@ -133,11 +135,62 @@ export function NotificationProvider({ children }) {
     setData(prev => {
       const nextList = (prev.notifications || []).filter(n => n.id !== id);
       const nextInbox = (prev.inbox || []).filter(i => i.id !== id);
+      const nextAnn = (prev.announcements || []).filter(a => a.id !== id);
       const unread = nextList.filter(n => !n.read).length + nextInbox.filter(i => !i.read).length;
       return {
         ...prev,
         notifications: nextList,
         inbox: nextInbox,
+        announcements: nextAnn,
+        unreadCount: unread
+      };
+    });
+  }, []);
+
+  const clearInbox = useCallback(() => {
+    setData(prev => {
+      try {
+        const inboxIds = (prev.inbox || []).map(i => i.id);
+        const dismissed = JSON.parse(localStorage.getItem('cadence_dismissed_notifs_v1') || '[]');
+        const updated = Array.from(new Set([...dismissed, ...inboxIds]));
+        localStorage.setItem('cadence_dismissed_notifs_v1', JSON.stringify(updated));
+      } catch {}
+      const unread = (prev.notifications || []).filter(n => !n.read).length;
+      return {
+        ...prev,
+        inbox: [],
+        unreadCount: unread
+      };
+    });
+  }, []);
+
+  const clearAnnouncements = useCallback(() => {
+    setData(prev => {
+      try {
+        const annIds = (prev.announcements || []).map(a => a.id);
+        const dismissed = JSON.parse(localStorage.getItem('cadence_dismissed_notifs_v1') || '[]');
+        const updated = Array.from(new Set([...dismissed, ...annIds]));
+        localStorage.setItem('cadence_dismissed_notifs_v1', JSON.stringify(updated));
+      } catch {}
+      return {
+        ...prev,
+        announcements: []
+      };
+    });
+  }, []);
+
+  const clearNotifications = useCallback(() => {
+    setData(prev => {
+      try {
+        const notifIds = (prev.notifications || []).map(n => n.id);
+        const dismissed = JSON.parse(localStorage.getItem('cadence_dismissed_notifs_v1') || '[]');
+        const updated = Array.from(new Set([...dismissed, ...notifIds]));
+        localStorage.setItem('cadence_dismissed_notifs_v1', JSON.stringify(updated));
+      } catch {}
+      const unread = (prev.inbox || []).filter(i => !i.read).length;
+      return {
+        ...prev,
+        notifications: [],
         unreadCount: unread
       };
     });
@@ -146,13 +199,20 @@ export function NotificationProvider({ children }) {
   const clearAll = useCallback(() => {
     setData(prev => {
       try {
-        const allIds = [...(prev.notifications || []).map(n => n.id), ...(prev.inbox || []).map(i => i.id)];
-        localStorage.setItem('cadence_dismissed_notifs_v1', JSON.stringify(allIds));
+        const allIds = [
+          ...(prev.notifications || []).map(n => n.id),
+          ...(prev.inbox || []).map(i => i.id),
+          ...(prev.announcements || []).map(a => a.id)
+        ];
+        const dismissed = JSON.parse(localStorage.getItem('cadence_dismissed_notifs_v1') || '[]');
+        const updated = Array.from(new Set([...dismissed, ...allIds]));
+        localStorage.setItem('cadence_dismissed_notifs_v1', JSON.stringify(updated));
       } catch {}
       return {
         ...prev,
         notifications: [],
         inbox: [],
+        announcements: [],
         unreadCount: 0
       };
     });
@@ -166,6 +226,9 @@ export function NotificationProvider({ children }) {
         markAsRead,
         markAllAsRead,
         clearNotification,
+        clearInbox,
+        clearAnnouncements,
+        clearNotifications,
         clearAll
       }}
     >
@@ -187,6 +250,9 @@ export function useNotifications() {
       markAsRead: () => {},
       markAllAsRead: () => {},
       clearNotification: () => {},
+      clearInbox: () => {},
+      clearAnnouncements: () => {},
+      clearNotifications: () => {},
       clearAll: () => {}
     };
   }
