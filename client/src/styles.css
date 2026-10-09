@@ -97,8 +97,7 @@ main{flex:1;display:flex;flex-direction:column}
 .avatar.lg{width:3.6rem;height:3.6rem;font-size:1.4rem}
 .avatar.sm{width:1.7rem;height:1.7rem;font-size:.75rem}
 .uname{font-size:.9rem;max-width:12ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.user-btn svg{color:var(--sub)}
-.menu{position:absolute;right:0;top:calc(100% + .5rem);min-width:200px;padding:.4rem;border-radius:14px;z-index:30;background:var(--glass-strong);border:1px solid var(--glass-border);box-shadow:var(--shadow);display:flex;flex-direction:column;animation:pop .16s ease-out}
+.menu{position:absolute;right:0;top:calc(100% + .5rem);min-width:200px;padding:.4rem;border-radius:14px;z-index:90;background:var(--bg-2);border:1px solid var(--glass-border);box-shadow:0 14px 38px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.15);display:flex;flex-direction:column;animation:pop .16s ease-out;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
 .menu a,.menu button{display:flex;align-items:center;gap:.65rem;padding:.6rem .7rem;border-radius:9px;border:0;background:none;text-decoration:none;font-size:.9rem;color:var(--text);cursor:pointer;text-align:left}
 .menu a:hover,.menu button:hover{background:var(--accent-soft)}
 .menu svg{color:var(--sub)}
@@ -346,13 +345,17 @@ select.select{appearance:none;font-family:var(--font-type);font-size:.82rem;padd
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--hairline)}
 .field{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.95rem}
 .field label{font-size:.84rem;color:var(--sub)}
-.input-wrap{position:relative}
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap input{padding-right:2.5rem}
 .field input,.field textarea{width:100%;font-size:.95rem;color:var(--text);padding:.78rem .9rem;border-radius:11px;border:1px solid var(--hairline);background:var(--bg);transition:border-color .15s,box-shadow .15s}
 .field textarea{font-family:var(--font-type);font-size:.85rem;min-height:9rem;resize:vertical}
 .field input:focus,.field textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .field input.invalid{border-color:var(--error)}
 .field .hint{font-size:.78rem;color:var(--sub)}
-.reveal{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);width:2.1rem;height:2.1rem;font-size:1rem}
+.reveal,.icon-btn.reveal{position:absolute;right:.35rem;top:50%;transform:translateY(-50%) !important;width:2.1rem;height:2.1rem;font-size:1rem;display:grid;place-items:center;border-radius:8px}
+.reveal:hover,.icon-btn.reveal:hover,
+.reveal:focus-visible,.icon-btn.reveal:focus-visible{transform:translateY(-50%) !important;color:var(--text);background:var(--accent-soft)}
+.reveal:active,.icon-btn.reveal:active{transform:translateY(-50%) scale(.96) !important}
 .caps-hint{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--error);margin:.1rem 0 0;animation:fade .2s}
 .strength{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:.15rem}
 .strength i{height:4px;border-radius:9px;background:var(--hairline);transition:background .2s}
@@ -797,8 +800,174 @@ body:not([data-route="/"]) .hints{display:none}
   background: rgba(239, 68, 68, 0.12);
   transform: scale(1.12);
 }
-.notif-item-clear-btn:active {
-  transform: scale(0.92);
+.notif-read-more-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--accent);
+  margin-top: 0.3rem;
+  font-weight: 600;
+  opacity: 0.95;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.notif-item:hover .notif-read-more-hint {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* ==========================================================
+   Big Message Popup Modal (Cadence Mail Full Detail Reader)
+   ========================================================== */
+.notif-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10005;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.notif-popup-modal {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  max-height: 85vh;
+  max-height: 85dvh;
+  background: var(--card, var(--bg-2));
+  border: 1px solid var(--hairline-strong, var(--hairline));
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-type);
+}
+
+.notif-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.4rem 1rem;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--bg-2, var(--card));
+}
+
+.notif-popup-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.notif-popup-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+}
+.notif-popup-tag.notif-popup-tag-inbox {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.notif-popup-tag.notif-popup-tag-announcement {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+.notif-popup-tag.notif-popup-tag-notification {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.notif-popup-category {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--sub);
+  background: var(--field);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+}
+
+.notif-popup-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--sub);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s ease;
+}
+.notif-popup-close-btn:hover {
+  background: var(--field);
+  color: var(--text);
+}
+
+.notif-popup-body-wrap {
+  padding: 1.5rem 1.4rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.notif-popup-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.notif-popup-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--sub);
+}
+.notif-popup-author {
+  font-weight: 600;
+  color: var(--sub);
+}
+.notif-popup-dot {
+  opacity: 0.5;
+}
+.notif-popup-time {
+  font-family: var(--font-type);
+}
+
+.notif-popup-text {
+  font-size: 0.95rem;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+  background: var(--field);
+  padding: 1.15rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+}
+
+.notif-popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.4rem;
+  border-top: 1px solid var(--hairline);
+  background: var(--bg-2, var(--card));
 }
 
 /* ==========================================================
@@ -2354,3 +2523,201 @@ tr:hover .player-link-copy-btn {
 }
 
 
+
+/* ==========================================================
+   Connect SRM AP: sign-in button, modal, badges, branding
+   ========================================================== */
+/* SRM AP blue, pulled toward the theme's text color so it stays readable on every theme (light or dark). */
+:root{ --srm-base:#3B7BEA; --srm:color-mix(in srgb, var(--srm-base) 72%, var(--text)); --srm-soft:color-mix(in srgb, var(--srm-base) 13%, transparent); --srm-ring:color-mix(in srgb, var(--srm-base) 38%, transparent); }
+
+/* Combined lockup in the header and admin sidebar (verified accounts only) */
+.brand-combo{display:inline-flex;align-items:center;gap:.3rem;flex:none}
+.brand-combo-x{font-size:.95rem;font-weight:500;color:var(--sub);line-height:1}
+.brand-combo-srm{width:40px;height:40px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 6px var(--srm-soft));transition:transform .2s cubic-bezier(.2,.8,.3,1)}
+.brand:hover .brand-combo-srm{transform:scale(1.06) rotate(3deg)}
+
+
+/* Sign-in button */
+.srmap-btn{background:var(--bg);color:var(--text);border:1px solid var(--hairline);padding:.62rem 1rem;border-radius:999px;font-weight:500;transition:border-color .15s,background .15s,box-shadow .15s}
+.srmap-btn img{width:24px;height:24px;object-fit:contain}
+.srmap-btn:hover{border-color:var(--srm-ring);background:var(--srm-soft)}
+.srmap-btn:focus-visible{outline:0;box-shadow:0 0 0 3px var(--srm-ring)}
+
+/* Modal */
+.srm-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:1rem;background:var(--scrim, rgba(15,23,42,.6));-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);overflow-y:auto}
+.srm-card{position:relative;width:min(460px,100%);max-height:calc(100dvh - 2rem);overflow:auto;border-radius:24px;padding:1.6rem 1.7rem 1.4rem;background:var(--glass-strong);border:1px solid var(--glass-border);box-shadow:var(--shadow)}
+.srm-close{position:absolute;top:.8rem;right:.8rem}
+.srm-lockup{display:flex;align-items:center;justify-content:center;gap:.6rem;margin:.2rem 0 1rem;color:var(--text)}
+.srm-lockup img{object-fit:contain;filter:drop-shadow(0 4px 12px var(--srm-soft))}
+.srm-lockup-x{font-size:1.1rem;color:var(--sub)}
+.srm-title{font-size:1.3rem;font-weight:600;letter-spacing:-.02em;margin:0 0 .4rem;text-align:center}
+.srm-sub{font-size:.88rem;color:var(--sub);margin:0 auto 1.15rem;text-align:center;line-height:1.5;max-width:36ch}
+.srm-fields{border:0;margin:0;padding:0;min-width:0}
+.srm-fields:disabled{opacity:.55}
+.srm-hint-err{color:var(--error) !important}
+.srm-submit{margin-top:.35rem;padding:.85rem 1rem}
+.srm-fine{display:flex;align-items:center;justify-content:center;gap:.4rem;font-size:.76rem;color:var(--sub);margin:.85rem 0 0;text-align:center}
+.srm-loading{display:flex;align-items:center;justify-content:center;gap:.5rem;font-size:.82rem;color:var(--sub);margin:0 0 .9rem}
+.srm-spin{animation:spin .8s linear infinite}
+.srm-config-error{display:flex;gap:.7rem;align-items:flex-start;padding:.8rem .9rem;margin:0 0 1rem;border-radius:12px;background:var(--field);border:1px solid var(--hairline);color:var(--error)}
+.srm-config-error strong{display:block;font-size:.88rem;margin-bottom:.15rem}
+.srm-config-error p{margin:0;font-size:.82rem;color:var(--sub);line-height:1.45}
+
+.srm-verified{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.7rem;padding:.75rem .85rem;margin:0 0 1rem;border-radius:14px;background:var(--srm-soft);border:1px solid var(--srm-ring);color:var(--srm)}
+.srm-verified strong{display:block;color:var(--text);font-size:.92rem;font-weight:600}
+.srm-verified small{display:block;color:var(--sub);font-size:.76rem;font-family:var(--font-type);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srm-verified > div{min-width:0}
+.srm-batch{display:inline-flex;align-items:center;gap:.3rem;font-size:.76rem;font-weight:600;padding:.3rem .6rem;border-radius:99px;background:var(--bg);color:var(--srm);border:1px solid var(--srm-ring);white-space:nowrap}
+.srm-batch.muted{color:var(--sub);border-color:var(--hairline);font-weight:500}
+.srm-avail-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);display:grid;place-items:center;color:var(--sub);pointer-events:none}
+.srm-avail-icon .ok{color:var(--accent)}
+.srm-avail-icon .bad{color:var(--error)}
+.srm-avail.available{color:var(--accent)}
+.srm-avail.taken,.srm-avail.invalid{color:var(--error)}
+.srm-suggest{margin:-.2rem 0 1rem}
+.srm-suggest-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem;font-size:.84rem;color:var(--sub)}
+.srm-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.srm-consent{align-items:flex-start;margin:0 0 1rem;line-height:1.45;font-size:.82rem;color:var(--sub)}
+.srm-consent input{margin-top:.12rem;flex:none}
+
+/* Account page */
+.srm-badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:600;padding:.28rem .65rem;border-radius:99px;background:var(--srm-soft);color:var(--srm);border:1px solid var(--srm-ring);margin:.15rem 0 .35rem}
+.srm-badge-batch{font-weight:500;padding-left:.4rem;margin-left:.1rem;border-left:1px solid var(--srm-ring)}
+.srm-panel-head{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.srm-panel-head img{width:64px;height:64px;object-fit:contain;flex:none}
+.srm-panel-head h2{margin:0 0 .25rem}
+.srm-panel-head p{margin:0;color:var(--sub);font-size:.88rem}
+.srm-panel-cta{max-width:320px}
+.srm-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.9rem 1.25rem;margin:0 0 .5rem}
+.srm-facts dt{font-size:.76rem;color:var(--sub);margin-bottom:.2rem}
+.srm-facts dd{margin:0;font-size:.9rem;display:flex;align-items:center;gap:.35rem}
+.srm-facts .mono{font-family:var(--font-type)}
+
+/* Public Profile SRM AP Verified Card */
+.srm-public-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--srm-ring);
+  background: linear-gradient(135deg, var(--glass-strong), var(--srm-soft));
+  box-shadow: 0 4px 20px rgba(59, 123, 234, 0.08);
+  margin-bottom: 1.5rem;
+  border-radius: 20px;
+  padding: 1.4rem 1.6rem;
+}
+.srm-public-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--srm-ring);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.srm-public-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.srm-public-brand img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px var(--srm-soft));
+}
+.srm-public-brand h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.srm-public-brand p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--sub);
+}
+.srm-public-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5rem;
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .srm-public-body {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+}
+.srm-photo-wrap {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--srm-base), #60A5FA);
+  box-shadow: 0 6px 18px var(--srm-soft);
+  flex-shrink: 0;
+}
+.srm-photo-wrap img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg);
+  display: block;
+}
+.srm-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.9rem 1.25rem;
+  width: 100%;
+}
+.srm-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.srm-detail-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sub);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.srm-detail-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+.srm-detail-value.mono {
+  font-family: var(--font-type);
+  letter-spacing: 0.02em;
+}
+.srm-detail-value.email-link {
+  color: var(--srm);
+  text-decoration: none;
+}
+.srm-detail-value.email-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 720px){
+  .brand-combo{gap:.2rem}
+  .brand-combo-srm{width:30px;height:30px}
+  .brand-combo-x{font-size:.8rem}
+  .srm-card{padding:1.35rem 1.15rem 1.15rem;border-radius:20px}
+  .srm-verified{grid-template-columns:auto 1fr}
+  .srm-verified .srm-batch{grid-column:1 / -1;justify-self:start}
+}
+@media (prefers-reduced-motion: reduce){ .srm-spin{animation-duration:2s} .brand:hover .brand-combo-srm{transform:none} }
+
+/* Leaderboard: SRM AP board toggle and the verified-student mark beside names */
+.lb-seg-logo{width:14px;height:14px;object-fit:contain;vertical-align:-2px;margin-right:.35rem}
+.lb-srm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--srm-soft);border:1px solid var(--srm-ring);flex:none}
+.lb-srm img{width:14px;height:14px;object-fit:contain}

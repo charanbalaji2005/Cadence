@@ -10,6 +10,8 @@ import users from './users.js';
 import auth from './auth.js';
 import insights from './insights.js';
 import ops from './ops.js';
+import srmap from './srmap.js';
+import broadcasts from './broadcasts.js';
 
 /**
  * /api/admin. Order matters: the session is already loaded (loadSession) and CSRF-checked
@@ -105,6 +107,8 @@ router.use(rateLimit({ windowMs: 60 * 1000, limit: 300, standardHeaders: 'draft-
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 router.use('/users', users);
+router.use('/srmap', srmap);
+router.use('/broadcasts', broadcasts);
 router.use('/', auth);
 router.use('/', insights);
 router.use('/', ops);

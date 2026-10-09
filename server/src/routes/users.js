@@ -2,11 +2,40 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { User } from '../models/User.js';
 import { Result } from '../models/Result.js';
+import { IdentityBinding } from '../models/IdentityBinding.js';
+import { sanitizeStudentPhoto } from '../services/srmap/profile.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateUsername } from '../utils/username.js';
 import { track } from '../services/events.js';
 
 const router = Router();
+
+async function attachSrmapDetails(publicUser, userId) {
+  try {
+    const binding = await IdentityBinding.findOne({ user: userId, active: true }).lean();
+    if (binding) {
+      const studentPhoto = sanitizeStudentPhoto(binding.profilePhoto, binding.gender);
+      publicUser.connections = publicUser.connections || {};
+      publicUser.connections.srm_ap = {
+        verified: true,
+        name: binding.displayName || '',
+        displayName: binding.displayName || '',
+        registerNumberMasked: binding.registerNumberMasked || 'Apxxxxxxxxxxx',
+        email: binding.verifiedEmail || '',
+        gender: binding.gender || '',
+        className: binding.className || '',
+        section: binding.section || '',
+        profilePhoto: studentPhoto,
+        batchYear: binding.batchYear ?? null
+      };
+      if (!publicUser.avatar) {
+        publicUser.avatar = studentPhoto;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to attach SRM AP details:', err);
+  }
+}
 
 // Lightweight rate limiter for username availability checks
 const checkLimiter = rateLimit({
@@ -58,9 +87,13 @@ router.get('/username/check', checkLimiter, async (req, res) => {
  * GET /api/users/me
  * Returns current authenticated user profile
  */
-router.get('/me', requireAuth, (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
+  const publicUser = req.user.toPublic();
+  if (req.user.connectedAccounts?.srm_ap?.verified || req.user.provider === 'srm_ap') {
+    await attachSrmapDetails(publicUser, req.user._id);
+  }
   res.json({
-    user: req.user.toPublic(),
+    user: publicUser,
     needsOnboarding: req.user.profileCompleted === false
   });
 });
@@ -140,7 +173,7 @@ router.get('/:username', async (req, res) => {
     }
 
     const results = await Result.find({ user: user._id })
-      .sort({ date: -1 })
+      .sort({ createdAt: -1 })
       .limit(500)
       .lean();
 
@@ -162,10 +195,20 @@ router.get('/:username', async (req, res) => {
     const avgAcc = resultsCount ? Math.round((totalAcc / resultsCount) * 10) / 10 : 0;
 
     const publicUser = user.toPublic();
-    // Do not leak user email to public viewers
+
+    if (user.connectedAccounts?.srm_ap?.verified || user.provider === 'srm_ap') {
+      await attachSrmapDetails(publicUser, user._id);
+    }
+
+    // Do not leak user personal account email to public viewers
     if (!req.user || req.user._id.toString() !== user._id.toString()) {
       delete publicUser.email;
     }
+
+    const recentResults = results.slice(0, 50).map(r => ({
+      ...r,
+      date: r.createdAt ? new Date(r.createdAt).getTime() : (r.date || Date.now())
+    }));
 
     return res.json({
       user: publicUser,
@@ -177,7 +220,7 @@ router.get('/:username', async (req, res) => {
         totalTime: Math.round(totalTime)
       },
       resultsCount,
-      recentResults: results.slice(0, 50)
+      recentResults
     });
   } catch (err) {
     return res.status(500).json({ error: 'Error loading user profile.' });

@@ -155,6 +155,24 @@ export function AuthProvider({ children }) {
       }
     },
     usernameAvailable: async username => api(`/users/username/check?username=${encodeURIComponent(username)}`),
+    // Connect SRM AP. The verified flag behind branding always comes back from the server in `user`.
+    srmapConfig: () => api('/auth/srmap/config'),
+    srmapVerify: async ({ identifier, password, remember = true, intent = 'login', consent }) => {
+      const d = await api('/auth/srmap/verify', { method: 'POST', body: { identifier, password, remember, intent, consent } });
+      if (d.pending) return d;
+      if (d.linked) { setState(s => ({ ...s, user: d.user })); return d; }
+      return afterAuth(d);
+    },
+    srmapOnboarding: (round = 0) => api(`/auth/srmap/onboarding?round=${round}`),
+    srmapComplete: async ({ username }) => afterAuth(await api('/auth/srmap/complete', { method: 'POST', body: { username, consent: true } })),
+    srmapCancel: () => api('/auth/srmap/cancel', { method: 'POST' }).catch(() => null),
+    srmapConnection: () => api('/auth/srmap/connection'),
+    srmapSyncProfile: () => api('/auth/srmap/connection/sync', { method: 'POST' }),
+    srmapUnlink: async () => {
+      const d = await api('/auth/srmap/connection', { method: 'DELETE' });
+      setState(s => ({ ...s, user: d.user }));
+      return d;
+    },
     completeProfile,
     closeOnboarding: () => setState(s => ({ ...s, needsOnboarding: false })),
     openOnboarding: (suggested = '') => setState(s => ({ ...s, needsOnboarding: true, suggestedUsername: suggested })),

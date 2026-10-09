@@ -25,7 +25,7 @@ router.get('/logins', requirePermission('security.view'), async (req, res) => {
   const f = { ...dateFilter(q, 'createdAt') };
   if (LOGIN_TYPES.includes(q.type)) f.type = q.type;
   if (q.success === 'true' || q.success === 'false') f.success = q.success === 'true';
-  if (['email', 'google', 'github'].includes(q.provider)) f.provider = q.provider;
+  if (['email', 'google', 'github', 'srm_ap'].includes(q.provider)) f.provider = q.provider;
   if (['Desktop', 'Mobile', 'Tablet'].includes(q.device)) f.device = q.device;
   if (SEVERITIES.includes(q.risk)) f.risk = q.risk;
   if (q.user) { const id = await resolveUserParam(q.user); if (id === null) return res.json(paged([], 0, p)); f.user = id; }

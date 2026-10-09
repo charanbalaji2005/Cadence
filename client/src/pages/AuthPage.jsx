@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, History, Crown, Target, ShieldCheck, ArrowBigUpDash } from 'lucide-react';
 import GoogleButton from '../components/GoogleButton.jsx';
 import GitHubButton from '../components/GitHubButton.jsx';
+import SrmapModal, { SrmapButton } from '../components/SrmapConnect.jsx';
 import TypingDemo from '../components/TypingDemo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
@@ -53,6 +54,7 @@ export default function AuthPage({ mode }) {
   const [invalid, setInvalid] = useState(null);
   const [busy, setBusy] = useState(false);
   const [userHint, setUserHint] = useState(null);
+  const [srmOpen, setSrmOpen] = useState(false);
   const rememberRef = useRef(remember);
   rememberRef.current = remember;
   const firstRef = useRef(null);
@@ -110,9 +112,9 @@ export default function AuthPage({ mode }) {
     return () => clearTimeout(t);
   }, [f.username, reg]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const { addNotification } = useNotifications();
   if (auth.ready && auth.user) return <Navigate to="/" replace />;
 
-  const { addNotification } = useNotifications();
   const set = k => v => setF(s => ({ ...s, [k]: v }));
   const fail = (text, field) => { setMsg({ text }); setInvalid(field || null); };
   const done = d => {
@@ -201,6 +203,7 @@ export default function AuthPage({ mode }) {
           <div className="oauth-stack">
             <GoogleButton clientId={auth.googleClientId} text={reg ? 'signup_with' : 'continue_with'} onCredential={onGoogle} onError={t => fail(t)} />
             <GitHubButton clientId={auth.githubClientId} text={reg ? 'Sign up with GitHub' : 'Continue with GitHub'} onError={t => fail(t)} />
+            <SrmapButton onClick={() => { setMsg(null); setSrmOpen(true); }}>{reg ? 'Sign up with Connect SRM AP' : 'Log in with Connect SRM AP'}</SrmapButton>
           </div>
           <div className="divider">or use email</div>
           <form onSubmit={submit} noValidate>
@@ -232,6 +235,7 @@ export default function AuthPage({ mode }) {
           <p className="switch">{reg ? <>Already have an account? <Link to="/login">Log in</Link></> : <>New to Cadence? <Link to="/register">Create an account</Link></>}</p>
         </div>
       </div>
+      <SrmapModal open={srmOpen} intent="login" remember={remember} onClose={() => setSrmOpen(false)} onDone={d => { setSrmOpen(false); done(d); }} />
     </div>
   );
 }

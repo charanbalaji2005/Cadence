@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { UserPlus, Swords, MoreHorizontal, UserMinus, Ban, Check, X, Users, LogIn, UserRound, Copy } from 'lucide-react';
+import { UserPlus, Swords, MoreHorizontal, UserMinus, Ban, Check, X, Users, LogIn, UserRound, Copy, Sparkles, BadgeCheck, Search } from 'lucide-react';
 import Avatar from '../components/Avatar.jsx';
 import AddFriendModal from '../components/friends/AddFriendModal.jsx';
 import { api } from '../lib/api.js';
@@ -13,26 +14,99 @@ const POLL_MS = 30000;
 
 function RowMenu({ friend, onRemove, onBlock, onCopyLink }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const updatePos = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const menuWidth = 190;
+    const menuHeight = 165;
+
+    let left = rect.right - menuWidth;
+    if (left < 10) left = 10;
+    if (left + menuWidth > window.innerWidth - 10) {
+      left = window.innerWidth - menuWidth - 10;
+    }
+
+    let top = rect.bottom + 6;
+    if (window.innerHeight - rect.bottom < menuHeight && rect.top > menuHeight) {
+      top = rect.top - menuHeight - 6;
+    }
+
+    setPos({ top, left });
+  }, []);
+
   useEffect(() => {
     if (!open) return undefined;
-    const close = e => { if (!ref.current?.contains(e.target)) setOpen(false); };
-    const esc = e => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    updatePos();
+    const onScrollOrResize = () => updatePos();
+    const close = e => {
+      if (!btnRef.current?.contains(e.target) && !menuRef.current?.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    const esc = e => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', esc, true);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc, true); };
-  }, [open]);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc, true);
+    };
+  }, [open, updatePos]);
+
   return (
-    <div className="fr-more" ref={ref}>
-      <button type="button" className="icon-btn" aria-haspopup="menu" aria-expanded={open} aria-label={`More options for ${friend.username}`} onClick={() => setOpen(o => !o)}><MoreHorizontal size="1em" /></button>
-      {open && (
-        <div className="menu fr-menu" role="menu">
-          <Link role="menuitem" to={`/profile/${friend.username}`} onClick={() => setOpen(false)}><UserRound size="1em" />View profile</Link>
-          <button role="menuitem" type="button" onClick={() => { setOpen(false); onCopyLink(); }}><Copy size="1em" />Copy profile link</button>
-          <button role="menuitem" type="button" onClick={() => { setOpen(false); onRemove(); }}><UserMinus size="1em" />Remove friend</button>
-          <button role="menuitem" type="button" onClick={() => { setOpen(false); onBlock(); }}><Ban size="1em" />Block</button>
-        </div>
-      )}
+    <div className="fr-more">
+      <button
+        ref={btnRef}
+        type="button"
+        className="icon-btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`More options for ${friend.username}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        <MoreHorizontal size="1em" />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="menu fr-menu"
+            role="menu"
+            style={{
+              position: 'fixed',
+              top: `${pos.top}px`,
+              left: `${pos.left}px`,
+              zIndex: 999999,
+              margin: 0
+            }}
+          >
+            <Link role="menuitem" to={`/profile/${friend.username}`} onClick={() => setOpen(false)}>
+              <UserRound size="1em" />View profile
+            </Link>
+            <button role="menuitem" type="button" onClick={() => { setOpen(false); onCopyLink(); }}>
+              <Copy size="1em" />Copy profile link
+            </button>
+            <button role="menuitem" type="button" onClick={() => { setOpen(false); onRemove(); }}>
+              <UserMinus size="1em" />Remove friend
+            </button>
+            <button role="menuitem" type="button" onClick={() => { setOpen(false); onBlock(); }}>
+              <Ban size="1em" />Block
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -46,6 +120,7 @@ export default function FriendsPage() {
   const [error, setError] = useState(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(null);
+  const [filter, setFilter] = useState('');
 
   const load = useCallback(async signal => {
     try { const d = await api('/friends', { signal }); setData(d); setError(null); }
@@ -84,6 +159,13 @@ export default function FriendsPage() {
   const friends = data?.friends || [];
   const online = friends.filter(f => f.online).length;
   const rowMotion = i => ({ initial: reduce ? { opacity: 0 } : { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0, transition: { delay: Math.min(i, 8) * 0.03 } }, exit: { opacity: 0, transition: { duration: 0.12 } } });
+
+  const suggested = data?.suggested || [];
+  const filteredSuggested = suggested.filter(u => {
+    if (!filter.trim()) return true;
+    const term = filter.toLowerCase().trim();
+    return u.username.toLowerCase().includes(term);
+  });
 
   return (
     <div className="page fr-page">
@@ -139,7 +221,7 @@ export default function FriendsPage() {
           <div className="fr-empty">
             <span className="fr-empty-icon" aria-hidden="true"><Users size="1em" /></span>
             <p><strong>You don't have any friends yet.</strong></p>
-            <p className="muted">Add friends to compete with them.</p>
+            <p className="muted">Add friends below or search by username to compete with them.</p>
             <button type="button" className="btn primary" onClick={() => setAdding(true)}><UserPlus size="1em" />Add friend</button>
           </div>
         ) : (
@@ -178,6 +260,78 @@ export default function FriendsPage() {
           </ul>
         )}
       </div>
+
+      {/* Recommended Friends on the Website */}
+      {suggested.length > 0 && (
+        <div className="panel glass fr-suggested-panel">
+          <div className="fr-section-head">
+            <div>
+              <h2>
+                <Sparkles size="1.1em" style={{ color: 'var(--accent)', verticalAlign: 'middle', marginRight: '0.4rem' }} />
+                Recommended Friends
+                <span className="aside">{filteredSuggested.length} available</span>
+              </h2>
+              <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.88rem' }}>
+                Connect with SRM AP students and typing racers across Cadence.
+              </p>
+            </div>
+            {suggested.length > 4 && (
+              <div className="fr-filter-wrap">
+                <Search size={14} className="fr-filter-icon" />
+                <input
+                  type="text"
+                  placeholder="Filter recommendations..."
+                  value={filter}
+                  onChange={e => setFilter(e.target.value)}
+                  className="fr-filter-input"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="fr-suggested-grid">
+            {filteredSuggested.map((u, i) => (
+              <motion.div
+                key={u.id}
+                className="fr-suggested-card"
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { delay: Math.min(i, 8) * 0.03 } }}
+              >
+                <div className="fr-suggested-card-top">
+                  <Link to={`/profile/${u.username}`} className="cp-av-wrap" title={`View ${u.username}'s public profile`}>
+                    <Avatar name={u.username} url={u.avatar} />
+                    <span className={`cp-presence${u.online ? ' on' : ''}`} aria-hidden="true" />
+                  </Link>
+                  <div className="fr-suggested-info">
+                    <Link to={`/profile/${u.username}`} className="fr-suggested-username" title={u.username}>
+                      {u.username}
+                    </Link>
+                    <div className="fr-suggested-badges">
+                      {u.verifiedStudent && (
+                        <span className="srm-chip-sm" title="Verified SRM AP Student">
+                          <BadgeCheck size={12} /> SRM AP {u.batchYear ? `· ${u.batchYear}` : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="fr-suggested-actions">
+                  <motion.button
+                    type="button"
+                    className="btn primary sm full-width"
+                    whileTap={{ scale: 0.95 }}
+                    disabled={busy === u.id}
+                    onClick={() => act(u.id, '/friends/request', { userId: u.id }, 'POST', `Friend request sent to ${u.username}! 🤝`)}
+                  >
+                    <UserPlus size="1em" /> Add Friend
+                  </motion.button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {data?.blocked.length > 0 && (
         <details className="panel glass fr-blocked">

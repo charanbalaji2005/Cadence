@@ -7,6 +7,14 @@ import { fmtDate } from '../lib/format.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { hasSrmapBranding, batchLabel, SRMAP_LOGO_SM } from '../lib/srmap.js';
+
+/** Small "verified SRM AP student" mark beside a name. Comes from the server's verified link only. */
+const SrmMark = ({ badge }) => (badge ? (
+  <span className="lb-srm" title={`Connect SRM AP verified${badge.batchYear ? `, ${batchLabel(badge.batchYear)}` : ''}`}>
+    <img src={SRMAP_LOGO_SM} alt="SRM AP" width="16" height="16" />
+  </span>
+) : null);
 
 export default function LeaderboardPage() {
   const auth = useAuth();
@@ -15,15 +23,17 @@ export default function LeaderboardPage() {
   const nav = useNavigate();
   const [length, setLength] = useState('15');
   const [range, setRange] = useState('all');
+  const [board, setBoard] = useState('global');
+  const [batch, setBatch] = useState('');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
   const load = useCallback(async signal => {
     try {
-      const d = await api(`/leaderboard?length=${length}&range=${range}&tz=${new Date().getTimezoneOffset()}`, { signal });
+      const d = await api(`/leaderboard?length=${length}&range=${range}&board=${board}${board === 'srmap' && batch ? `&batch=${batch}` : ''}&tz=${new Date().getTimezoneOffset()}`, { signal });
       setData(d); setError(null);
     } catch (err) { if (err.name !== 'AbortError') setError(err.message); }
-  }, [length, range]);
+  }, [length, range, board, batch]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -40,10 +50,20 @@ export default function LeaderboardPage() {
   return (
     <div className="page">
       <div className="lb-head">
-        <div><h1>Leaderboard</h1><p className="lede">English, {length} second tests without punctuation or numbers, ranked by words per minute.</p></div>
+        <div><h1>{board === 'srmap' ? 'SRM AP Leaderboard' : 'Leaderboard'}</h1><p className="lede">{board === 'srmap' ? `Verified Connect SRM AP students${batch ? ` of the ${batchLabel(Number(batch))}` : ''}, ` : ''}English, {length} second tests without punctuation or numbers, ranked by words per minute.</p></div>
         <span className={`live-dot${data ? ' on' : ''}`}>{data ? `${data.players} player${data.players === 1 ? '' : 's'}` : error ? 'Offline' : 'Loading'}</span>
       </div>
       <div className="controls">
+        <div className="seg" role="group" aria-label="Ranking">
+          <Seg value="global" cur={board} set={v => { setBoard(v); setBatch(''); }}>everyone</Seg>
+          <Seg value="srmap" cur={board} set={setBoard}><img src={SRMAP_LOGO_SM} alt="" width="14" height="14" className="lb-seg-logo" />SRM AP</Seg>
+        </div>
+        {board === 'srmap' && data?.batches?.length > 0 && (
+          <select className="select" aria-label="Batch" value={batch} onChange={e => setBatch(e.target.value)}>
+            <option value="">all batches</option>
+            {data.batches.map(y => <option key={y} value={String(y)}>{batchLabel(y)}</option>)}
+          </select>
+        )}
         <div className="seg" role="group" aria-label="Test length"><Seg value="15" cur={length} set={setLength}>15 seconds</Seg><Seg value="60" cur={length} set={setLength}>60 seconds</Seg></div>
         <div className="seg" role="group" aria-label="Time range"><Seg value="all" cur={range} set={setRange}>all time</Seg><Seg value="today" cur={range} set={setRange}>today</Seg></div>
         <span className="spacer" />
@@ -83,6 +103,7 @@ export default function LeaderboardPage() {
                       <Avatar name={e.username} url={e.avatar} size="sm" />
                       <span>{e.username}</span>
                     </Link>
+                    <SrmMark badge={e.srmap} />
                     {e.userId === myId && <span className="you">you</span>}
                     <button
                       type="button"
@@ -107,7 +128,8 @@ export default function LeaderboardPage() {
           </table></div>
         ) : (
           <div className="empty">
-            <p>No scores {range === 'today' ? 'today' : 'yet'} for {length} second tests. {auth.user ? 'Finish one with at least 75% accuracy to take the top spot.' : 'Log in and finish one to take the top spot.'}</p>
+            {board === 'srmap' && auth.user && !hasSrmapBranding(auth.user) && <p>This board ranks verified SRM AP students. Connect SRM AP from <Link to="/account">Account settings</Link> to join it.</p>}
+            <p>No scores {range === 'today' ? 'today' : 'yet'} for {length} second tests{board === 'srmap' ? ' from SRM AP students' : ''}. {auth.user ? 'Finish one with at least 75% accuracy to take the top spot.' : 'Log in and finish one to take the top spot.'}</p>
             <button className="btn outline" onClick={quick}><Keyboard size="1em" />Start a {length} second test</button>
           </div>
         )}

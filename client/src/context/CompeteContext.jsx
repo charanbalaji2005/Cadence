@@ -180,6 +180,13 @@ export function CompeteProvider({ children }) {
         n.addNotification({ category: 'Friends', title: `${msg.user.username} is now your friend.`, type: 'success' });
         break;
       case 'friends_changed': setFriendRequests(msg.friendRequests || 0); setFriendsVersion(v => v + 1); break;
+      case 'broadcast_message':
+        if (msg.message) {
+          u.toast(`📢 New ${msg.message.type}: ${msg.message.title}`);
+          window.dispatchEvent(new CustomEvent('cadence:refresh-notifications'));
+          if (n?.refreshNotifications) n.refreshNotifications();
+        }
+        break;
       case 'error': if (!settle(msg.ref, false, msg)) u.toast(msg.message); break;
       case 'unauthorized': applyRoom(null); break;
       default: break;
@@ -188,7 +195,7 @@ export function CompeteProvider({ children }) {
 
   // One socket while signed in; none for guests.
   useEffect(() => {
-    if (!myId) { applyRoom(null); setInvites([]); setFriendRequests(0); setStatus('idle'); return undefined; }
+    if (!myId) { applyRoom(null); setInvites([]); setToasts([]); setNotice(null); setFriendRequests(0); setStatus('idle'); return undefined; }
     const c = new RealtimeClient({ onMessage: m => handle.current(m), onStatus: setStatus });
     client.current = c;
     c.start();

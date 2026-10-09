@@ -22,7 +22,12 @@ export function fmtTime(sec) {
   if (m) return `${m}m ${s}s`;
   return `${s}s`;
 }
-export const fmtDate = (t, withTime) => new Date(t).toLocaleString([], withTime ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' });
+export const fmtDate = (t, withTime) => {
+  if (!t) return '—';
+  const d = new Date(t);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString([], withTime ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' });
+};
 export function nameColor(name) { let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 55% 52%)`; }
 export const local = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },

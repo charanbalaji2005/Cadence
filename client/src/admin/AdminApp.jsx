@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   LayoutDashboard, Users, UserCheck, UserPlus, UserX, Trash2, LogIn, MonitorSmartphone, ShieldX, Github, Radio, BarChart3, FileText,
   Share2, Activity, ScrollText, ShieldAlert, Swords, TrendingUp, Gauge, Repeat, Smartphone, Globe2, Download, FileBarChart, Database,
-  Server, Cable, HardDrive, Bug, UserCog, Lock, SlidersHorizontal, Bell, Search, Menu, X, ArrowLeft, Palette, Check, CheckCheck, ShieldOff
+  Server, Cable, HardDrive, Bug, UserCog, Lock, SlidersHorizontal, Bell, Search, Menu, X, ArrowLeft, Palette, Check, CheckCheck, ShieldOff, GraduationCap
 } from 'lucide-react';
 import Logo from '../components/Logo.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -14,10 +14,15 @@ import { AdminCtx, aget, apost, useQuery, useDarkTheme, ago } from './lib.js';
 import { Role, Severity } from './ui.jsx';
 import * as P from './pages.jsx';
 import * as Q from './pages2.jsx';
+import { SrmapPage, SrmapBindingDetail } from './srmap.jsx';
+import BroadcastPage from './BroadcastPage.jsx';
 import './admin.css';
 
 const NAV = [
   ['Overview', [['/admin', LayoutDashboard, 'Dashboard', 'dashboard.view', true]]],
+  ['Communications', [
+    ['/admin/broadcasts', Bell, 'Cadence Mail & Alerts', 'admin.access', true]
+  ]],
   ['Users', [
     ['/admin/users', Users, 'All users', 'users.view', true], ['/admin/users?view=active', UserCheck, 'Active users', 'users.view'],
     ['/admin/users?view=new', UserPlus, 'New users', 'users.view'], ['/admin/users?view=suspended', UserX, 'Suspended users', 'users.view'],
@@ -25,7 +30,8 @@ const NAV = [
   ]],
   ['Authentication', [
     ['/admin/authentication/logins', LogIn, 'Login activity', 'security.view'], ['/admin/authentication/sessions', MonitorSmartphone, 'Sessions', 'sessions.manage'],
-    ['/admin/authentication/failed', ShieldX, 'Failed logins', 'security.view'], ['/admin/authentication/oauth', Github, 'OAuth accounts', 'users.view']
+    ['/admin/authentication/failed', ShieldX, 'Failed logins', 'security.view'], ['/admin/authentication/oauth', Github, 'OAuth accounts', 'users.view'],
+    ['/admin/authentication/srmap', GraduationCap, 'Connect SRM AP', 'srmap.view']
   ]],
   ['Visitors', [
     ['/admin/visitors/live', Radio, 'Live visitors', 'visitors.view'], ['/admin/visitors', BarChart3, 'Visitor analytics', 'visitors.view', true],
@@ -414,12 +420,15 @@ export default function AdminApp() {
           <main id="adm-main" className="adm-main" tabIndex={-1}>
             <Routes>
               <Route path="/admin" element={gate('dashboard.view', <P.Dashboard />)} />
+              <Route path="/admin/broadcasts" element={gate('admin.access', <BroadcastPage />)} />
               <Route path="/admin/users" element={gate('users.view', <P.UsersPage />)} />
               <Route path="/admin/users/:id" element={gate('users.view', <P.UserDetail />)} />
               <Route path="/admin/authentication/logins" element={gate('security.view', <P.LoginsPage />)} />
               <Route path="/admin/authentication/sessions" element={gate('sessions.manage', <P.SessionsPage />)} />
               <Route path="/admin/authentication/failed" element={gate('security.view', <P.FailedLoginsPage />)} />
               <Route path="/admin/authentication/oauth" element={gate('users.view', <P.OAuthPage />)} />
+              <Route path="/admin/authentication/srmap" element={gate('srmap.view', <SrmapPage />)} />
+              <Route path="/admin/authentication/srmap/:id" element={gate('srmap.view', <SrmapBindingDetail />)} />
               <Route path="/admin/authentication" element={<Navigate to="/admin/authentication/logins" replace />} />
               <Route path="/admin/security" element={gate('security.view', <P.SecurityPage />)} />
               <Route path="/admin/visitors/live" element={gate('visitors.view', <Q.LiveVisitors />)} />

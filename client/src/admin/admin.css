@@ -354,3 +354,21 @@
   .adm-bar-track span,.adm-progress > span{background:Highlight}
   .adm-pill,.adm-role,.adm-delta{border:1px solid CanvasText}
 }
+
+/* Connect SRM AP */
+.adm-srm-logo{width:56px;height:56px;object-fit:contain}
+.adm-srm-url{display:flex;flex-direction:column;align-items:stretch;gap:.4rem;min-width:min(320px,100%)}
+.adm-srm-checks{list-style:none;margin:.25rem 0 0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.adm-srm-check{display:flex;align-items:flex-start;gap:.5rem;font-size:.86rem;line-height:1.4}
+.adm-srm-check svg{flex:none;margin-top:.15rem}
+.adm-srm-check.ok svg{color:var(--good-ink, var(--accent))}
+.adm-srm-check.bad svg{color:var(--crit)}
+.adm-srm-warn{color:var(--crit);font-weight:500}
+.adm-srm-batches{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.45rem}
+.adm-srm-batches li{display:flex;align-items:center;gap:.5rem;font-size:.86rem}
+.adm-srm-batches strong{margin-left:auto;font-family:var(--font-type)}
+@media (max-width: 720px){ .adm-srm-url{min-width:0;width:100%} }
+/* The wordmark rule above targets spans; keep the Cadence × Connect SRM AP lockup in a row. */
+.adm-brand a span.brand-combo{flex-direction:row;align-items:center;gap:.25rem}
+.adm-brand .brand-combo-x{font-size:.8rem}
+.adm-brand .brand-combo-srm{width:30px;height:30px}

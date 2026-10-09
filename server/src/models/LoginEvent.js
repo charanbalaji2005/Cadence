@@ -10,7 +10,7 @@ const loginEventSchema = new mongoose.Schema({
   username: { type: String, default: '' },
   identifier: { type: String, default: '' },     // masked email, for display
   identifierHash: { type: String, default: '' }, // for counting repeated attempts without the address
-  provider: { type: String, enum: ['email', 'google', 'github', ''], default: '' },
+  provider: { type: String, enum: ['email', 'google', 'github', 'srm_ap', ''], default: '' },
   reason: { type: String, default: '' },
   session: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
   ip: { type: String, default: '' },

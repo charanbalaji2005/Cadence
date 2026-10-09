@@ -12,6 +12,7 @@ import { config } from './config.js';
 import { connectDb } from './db.js';
 import { loadSession, csrfGuard } from './middleware/auth.js';
 import authRoutes, { handleGithubRedirect } from './routes/auth.js';
+import srmapRoutes from './routes/srmap.js';
 import meRoutes from './routes/me.js';
 import resultRoutes from './routes/results.js';
 import leaderboardRoutes from './routes/leaderboard.js';
@@ -30,6 +31,7 @@ import { bootstrapAdmins } from './services/accounts.js';
 import { startBackgroundJobs } from './services/jobs.js';
 import { getSettings } from './services/settings.js';
 import { trafficManagerMiddleware, getTrafficStats } from './services/trafficManager.js';
+import { BroadcastMessage } from './models/BroadcastMessage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -51,7 +53,7 @@ app.use(helmet({
       connectSrc: ["'self'", ...config.clientOrigins.map(o => o.replace(/^http/, 'ws')), 'https://accounts.google.com/gsi/'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com/gsi/style'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'https://*.googleusercontent.com', 'https://*.githubusercontent.com'],
+      imgSrc: ["'self'", 'data:', 'https://*.googleusercontent.com', 'https://*.githubusercontent.com', 'https://oursrmap.purlyedit.in'],
       upgradeInsecureRequests: null // HTTPS is enforced by your proxy or host; this keeps plain-HTTP local runs working
     }
   }
@@ -88,8 +90,52 @@ app.all('/api/wake', (req, res) => {
   });
 });
 
-app.get('/api/notifications', (req, res) => {
-  const inbox = [
+function formatTimeAgo(date) {
+  if (!date) return 'Just now';
+  const diffSec = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (diffSec < 60) return 'Just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
+}
+
+app.get('/api/notifications', async (req, res) => {
+  if (!req.user) {
+    return res.json({
+      inbox: [],
+      announcements: [],
+      notifications: [],
+      unreadCount: 0,
+      totalCount: 0
+    });
+  }
+
+  // Fetch admin broadcast messages from MongoDB
+  let broadcasts = [];
+  try {
+    broadcasts = await BroadcastMessage.find({ active: true }).sort({ createdAt: -1 }).limit(100).lean();
+  } catch (err) {
+    console.warn('Failed to load broadcasts from db:', err);
+  }
+
+  const formatItem = (b) => ({
+    id: String(b._id),
+    category: b.category || 'Cadence Team',
+    title: b.title,
+    content: b.content,
+    severity: b.severity || 'info',
+    type: b.type === 'notification' ? (b.severity === 'urgent' ? 'warning' : b.severity || 'info') : b.type,
+    author: b.author || 'Cadence Admin',
+    time: formatTimeAgo(b.createdAt),
+    read: false,
+    createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString()
+  });
+
+  const dbInbox = broadcasts.filter(b => b.type === 'inbox').map(formatItem);
+  const dbAnnouncements = broadcasts.filter(b => b.type === 'announcement').map(formatItem);
+  const dbNotifications = broadcasts.filter(b => b.type === 'notification').map(formatItem);
+
+  const defaultInbox = [
     {
       id: 'mail-welcome',
       category: 'Cadence Team',
@@ -97,7 +143,7 @@ app.get('/api/notifications', (req, res) => {
       content: 'Master your typing rhythm, discover daily streaks, and race against typists in real-time.',
       time: 'Just now',
       read: false,
-      createdAt: new Date().toISOString()
+      createdAt: req.user.createdAt ? new Date(req.user.createdAt).toISOString() : new Date().toISOString()
     },
     {
       id: 'mail-tips',
@@ -110,7 +156,7 @@ app.get('/api/notifications', (req, res) => {
     }
   ];
 
-  const announcements = [
+  const defaultAnnouncements = [
     {
       id: 'ann-cadence-v2',
       category: 'Release',
@@ -121,7 +167,7 @@ app.get('/api/notifications', (req, res) => {
     }
   ];
 
-  const notifications = [
+  const defaultNotifications = [
     {
       id: 'notif-init-1',
       category: 'Success',
@@ -130,9 +176,13 @@ app.get('/api/notifications', (req, res) => {
       type: 'success',
       time: 'Just now',
       read: false,
-      createdAt: new Date().toISOString()
+      createdAt: req.user.createdAt ? new Date(req.user.createdAt).toISOString() : new Date().toISOString()
     }
   ];
+
+  const inbox = [...dbInbox, ...defaultInbox];
+  const announcements = [...dbAnnouncements, ...defaultAnnouncements];
+  const notifications = [...dbNotifications, ...defaultNotifications];
 
   const unreadCount = inbox.filter(i => !i.read).length + notifications.filter(n => !n.read).length;
 
@@ -141,7 +191,7 @@ app.get('/api/notifications', (req, res) => {
     announcements,
     notifications,
     unreadCount,
-    totalCount: 25
+    totalCount: Math.max(25, inbox.length + announcements.length + notifications.length)
   });
 });
 
@@ -206,6 +256,7 @@ app.use('/api', async (req, res, next) => {
   next();
 });
 
+app.use('/api/auth/srmap', srmapRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/results', resultRoutes);

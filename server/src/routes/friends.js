@@ -18,7 +18,21 @@ const writeLimiter = limiter(30, 'Too many friend requests. Wait a moment and tr
 const userIdBody = z.object({ userId: z.string().regex(/^[a-f0-9]{24}$/i, 'Unknown user.') });
 const requestBody = z.object({ username: z.string().trim().min(1, 'Enter a username.').max(30) }).or(userIdBody);
 
-const card = u => ({ id: u._id.toString(), username: u.username, avatar: u.avatar || '', online: hub.isOnline(u._id) });
+/**
+ * What other users see of an account. For SRM AP students that is only the verified badge and batch:
+ * names, class, section and other institutional details stay with the student and the admins.
+ */
+const card = u => {
+  const srm = u.connectedAccounts?.srm_ap;
+  return {
+    id: u._id.toString(),
+    username: u.username,
+    avatar: u.avatar || '',
+    batchYear: srm?.verified ? srm.batchYear ?? null : null,
+    verifiedStudent: srm?.verified === true,
+    online: hub.isOnline(u._id)
+  };
+};
 const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const other = (f, me) => (f.requester.equals(me) ? f.recipient : f.requester);
 
@@ -39,9 +53,9 @@ router.get('/', async (req, res) => {
   const me = req.user._id;
   const rows = await Friendship.find({ $or: [{ requester: me }, { recipient: me }] }).lean();
   const visible = rows.filter(f => f.status !== 'blocked' || f.blockedBy?.equals(me));
-  const users = await User.find({ _id: { $in: visible.map(f => other(f, me)) } }).select('username avatar').lean();
+  const users = await User.find({ _id: { $in: visible.map(f => other(f, me)) } }).select('username avatar connectedAccounts').lean();
   const byId = new Map(users.map(u => [u._id.toString(), u]));
-  const out = { friends: [], incoming: [], outgoing: [], blocked: [] };
+  const out = { friends: [], incoming: [], outgoing: [], blocked: [], suggested: [] };
   for (const f of visible) {
     const u = byId.get(other(f, me).toString());
     if (!u) continue; // account deleted
@@ -54,8 +68,39 @@ router.get('/', async (req, res) => {
   }
   // Online friends first, then alphabetical.
   out.friends.sort((a, b) => Number(b.online) - Number(a.online) || a.username.localeCompare(b.username));
+
+  // Suggested / Recommended friends across the website (not yet connected)
+  const excludedIds = [me, ...rows.map(f => other(f, me))];
+  const suggestedUsers = await User.find({
+    _id: { $nin: excludedIds },
+    status: { $nin: ['suspended', 'deleted'] }
+  })
+    .sort({ lastActiveAt: -1, createdAt: -1 })
+    .limit(40)
+    .select('username avatar connectedAccounts role lastActiveAt')
+    .lean();
+
+  out.suggested = suggestedUsers.map(u => card(u));
+
   res.set('Cache-Control', 'no-store');
   res.json(out);
+});
+
+router.get('/suggested', async (req, res) => {
+  const me = req.user._id;
+  const rows = await Friendship.find({ $or: [{ requester: me }, { recipient: me }] }).lean();
+  const excludedIds = [me, ...rows.map(f => other(f, me))];
+  const suggestedUsers = await User.find({
+    _id: { $nin: excludedIds },
+    status: { $nin: ['suspended', 'deleted'] }
+  })
+    .sort({ lastActiveAt: -1, createdAt: -1 })
+    .limit(40)
+    .select('username avatar connectedAccounts role lastActiveAt')
+    .lean();
+
+  res.set('Cache-Control', 'no-store');
+  res.json({ suggested: suggestedUsers.map(u => card(u)) });
 });
 
 /** Prefix search on the indexed, lowercase username, so it never scans the whole collection. */
@@ -63,7 +108,7 @@ router.get('/search', searchLimiter, async (req, res) => {
   const q = String(req.query.username || '').trim().toLowerCase().replace(/^@/, '').replace(/[^a-z0-9_]/g, '').slice(0, 20);
   if (q.length < 2) return res.json({ query: q, results: [] });
   const me = req.user._id;
-  const users = await User.find({ usernameNormalized: { $regex: `^${escapeRe(q)}` }, status: { $nin: ['suspended', 'deleted'] } }).sort({ usernameNormalized: 1 }).limit(8).select('username usernameNormalized avatar').lean();
+  const users = await User.find({ usernameNormalized: { $regex: `^${escapeRe(q)}` }, status: { $nin: ['suspended', 'deleted'] } }).sort({ usernameNormalized: 1 }).limit(8).select('username usernameNormalized avatar connectedAccounts').lean();
   const rels = await Friendship.find({ pair: { $in: users.map(u => pairKey(me, u._id)) } }).lean();
   const relByPair = new Map(rels.map(f => [f.pair, f]));
   const results = users

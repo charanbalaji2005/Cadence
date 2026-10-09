@@ -20,6 +20,7 @@ export const PERMISSIONS = {
   'security.view': 'MODERATOR',
   'activity.view': 'MODERATOR',
   'competitions.manage': 'MODERATOR',
+  'srmap.view': 'MODERATOR',       // Connect SRM AP bindings (read only)
   'users.delete': 'ADMIN',
   'audit.view': 'ADMIN',
   'export.manage': 'ADMIN',
@@ -27,6 +28,8 @@ export const PERMISSIONS = {
   'errors.manage': 'ADMIN',
   'settings.app': 'ADMIN',
   'settings.retention': 'ADMIN',
+  'srmap.unbind': 'ADMIN',
+  'srmap.configure': 'ADMIN',      // enable/disable, endpoints, API key, test connection
   'users.roles': 'SUPER_ADMIN',    // only super admins create, remove or change admins
   'users.purge': 'SUPER_ADMIN',
   'settings.security': 'SUPER_ADMIN'

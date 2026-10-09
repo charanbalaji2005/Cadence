@@ -9,6 +9,7 @@ import { useData } from '../lib/store.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
 import CompetitionHistory from '../components/compete/CompetitionHistory.jsx';
+import SrmapAccountPanel, { SrmapBadge } from '../components/SrmapAccountPanel.jsx';
 
 export default function AccountPage() {
   const auth = useAuth();
@@ -54,7 +55,8 @@ export default function AccountPage() {
         <Avatar name={u.username} url={u.avatar} size="lg" />
         <div>
           <h1>{u.username}</h1>
-          <p>{u.email}{u.createdAt ? `, joined ${fmtDate(u.createdAt)}` : ''}{u.provider === 'google' ? ', Google account' : u.provider === 'github' ? ', GitHub account' : ''}</p>
+          <SrmapBadge user={u} />
+          <p>{u.email}{u.createdAt ? `, joined ${fmtDate(u.createdAt)}` : ''}{u.provider === 'google' ? ', Google account' : u.provider === 'github' ? ', GitHub account' : u.provider === 'srm_ap' ? ', Connect SRM AP account' : ''}</p>
           <p><ShieldCheck size="1em" style={{ verticalAlign: '-2px' }} /> {session}</p>
         </div>
         <div className="actions">
@@ -131,6 +133,7 @@ export default function AccountPage() {
           <button className="btn primary" style={{ marginTop: '1.6rem' }} disabled={saving || name.trim() === u.username}><Save size="1em" />Save</button>
         </form>
       </div>
+      <SrmapAccountPanel />
       <div className="panel glass">
         <h2>Security</h2>
         <div className="set-row"><div><h3>Sign out everywhere</h3><p>End your sessions on every device.</p></div><div className="ctrl"><button className="btn ghost" onClick={signOutAll}><MonitorSmartphone size="1em" />Sign out everywhere</button></div></div>

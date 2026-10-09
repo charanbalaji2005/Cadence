@@ -33,7 +33,21 @@ const isBlocked = user => user && user.status && user.status !== 'active';
 const registrationsClosed = async () => !(await getSettings()).application.registrationsOpen;
 const CLOSED_MSG = 'New sign-ups are paused right now. Try again later.';
 
-/** After any successful sign-in: admin bootstrap and the login record. */
+/**
+ * Google/GitHub find an existing account by verified email, except one created with Connect SRM AP:
+ * those stay separate and are reached only through Connect SRM AP (or linked from Account settings).
+ */
+const SRMAP_ONLY_MSG = 'This email belongs to a Cadence account created with Connect SRM AP. Choose "Connect SRM AP" to sign in to it.';
+const byEmailUnlessSrmap = async email => {
+  const u = await User.findOne({ email });
+  return u && u.provider === 'srm_ap' ? { srmapOnly: true } : u;
+};
+
+/**
+ * After any successful sign-in: admin bootstrap and the login record.
+ * SRM AP identity is never inferred here from an email address; it is linked only through
+ * routes/srmap.js after the SRM AP verification service confirms the student.
+ */
 async function signedIn(req, res, user, type, provider) {
   await applyBootstrapRole(user);
   await recordAuth(req, { type, success: true, user, provider, session: res.locals.sessionId });
@@ -157,7 +171,7 @@ router.post('/login', authLimiter, async (req, res) => {
   if (!user || !ok) {
     if (user && !user.passwordHash) {
       await recordAuth(req, { type: 'failed', success: false, user, provider: 'email', identifier: d.email, reason: 'oauth_account' });
-      const p = user.provider === 'github' ? 'GitHub' : 'Google';
+      const p = user.provider === 'github' ? 'GitHub' : user.provider === 'srm_ap' ? 'Connect SRM AP' : 'Google';
       return res.status(401).json({ error: `This account uses ${p} sign-in. Choose "Continue with ${p}".` });
     }
     await recordAuth(req, { type: 'failed', success: false, user: user || undefined, provider: 'email', identifier: d.email, reason: user ? 'wrong_password' : 'unknown_email' });
@@ -203,7 +217,11 @@ router.post('/google', authLimiter, async (req, res) => {
   }
 
   const email = payload.email.toLowerCase();
-  let user = (await User.findOne({ googleId: payload.sub })) || (await User.findOne({ email }));
+  let user = (await User.findOne({ googleId: payload.sub })) || (await byEmailUnlessSrmap(email));
+  if (user?.srmapOnly) {
+    await recordAuth(req, { type: 'failed', success: false, provider: 'google', identifier: email, reason: 'srmap_account' });
+    return res.status(409).json({ error: SRMAP_ONLY_MSG, code: 'srmap_account' });
+  }
   let isNewUser = false;
   let suggestedUsername = '';
 
@@ -315,7 +333,11 @@ export async function processGithubAuth({ code, state, cookieState, redirectUri,
   email = email.toLowerCase().trim();
 
   const githubId = String(ghUser.id);
-  let user = (await User.findOne({ githubId })) || (await User.findOne({ email }));
+  let user = (await User.findOne({ githubId })) || (await byEmailUnlessSrmap(email));
+  if (user?.srmapOnly) {
+    await recordAuth(req, { type: 'failed', success: false, provider: 'github', identifier: email, reason: 'srmap_account' });
+    throw new Error(SRMAP_ONLY_MSG);
+  }
   let isNewUser = false;
   let suggestedUsername = '';
 

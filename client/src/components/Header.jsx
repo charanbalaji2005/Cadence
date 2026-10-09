@@ -23,6 +23,11 @@ export default function Header({ onBrand }) {
   const menuRef = useRef(null);
 
   useEffect(() => { setMenu(false); setNotifOpen(false); }, [loc.pathname]);
+  useEffect(() => {
+    if (!auth.user) {
+      setNotifOpen(false);
+    }
+  }, [auth.user]);
   // Registered as an overlay so Escape closes the menu (instead of opening the palette) and typing pauses.
   useOverlay('user-menu', menu, () => setMenu(false));
   useEffect(() => { if (menu) requestAnimationFrame(() => menuRef.current?.querySelector('.menu [role="menuitem"]')?.focus()); }, [menu]);
@@ -45,6 +50,7 @@ export default function Header({ onBrand }) {
 
   const signOut = async () => {
     setMenu(false);
+    setNotifOpen(false);
     try {
       await auth.logout();
     } catch (err) {
@@ -69,21 +75,6 @@ export default function Header({ onBrand }) {
         ))}
       </nav>
       <div className="top-right">
-        {/* Notification Center button & flyout */}
-        <div className="notif-wrapper" style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className={`icon-btn notif-toggle-btn${notifOpen ? ' active' : ''}`}
-            title="Inbox & Notifications"
-            aria-label="Inbox and Notifications"
-            onClick={() => setNotifOpen(o => !o)}
-          >
-            <Bell size="1.05em" />
-            {unreadCount > 0 && <span className="notif-badge-dot" />}
-          </button>
-          <NotificationCenter isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
-        </div>
-
         {!auth.ready ? null : !auth.user ? (
           <>
             <Link
@@ -104,11 +95,27 @@ export default function Header({ onBrand }) {
             </Link>
           </>
         ) : (
-          <div className="user" ref={menuRef}>
-            <button className="user-btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(m => !m)}>
-              <Avatar name={auth.user.username} url={auth.user.avatar} />
-              <span className="uname">{auth.user.username}</span><ChevronDown size="1em" />
-            </button>
+          <>
+            {/* Notification Center button & flyout (only rendered when logged in) */}
+            <div className="notif-wrapper" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`icon-btn notif-toggle-btn${notifOpen ? ' active' : ''}`}
+                title="Inbox & Notifications"
+                aria-label="Inbox and Notifications"
+                onClick={() => setNotifOpen(o => !o)}
+              >
+                <Bell size="1.05em" />
+                {unreadCount > 0 && <span className="notif-badge-dot" />}
+              </button>
+              <NotificationCenter isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
+            </div>
+
+            <div className="user" ref={menuRef}>
+              <button className="user-btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(m => !m)}>
+                <Avatar name={auth.user.username} url={auth.user.avatar} />
+                <span className="uname">{auth.user.username}</span><ChevronDown size="1em" />
+              </button>
             {menu && (
               <div className="menu menu-account" role="menu" aria-label="Account" onKeyDown={menuKeys}>
                 <div className="menu-profile">
@@ -140,7 +147,8 @@ export default function Header({ onBrand }) {
               </div>
             )}
           </div>
-        )}
+        </>
+      )}
       </div>
     </header>
   );

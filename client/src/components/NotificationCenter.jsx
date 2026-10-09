@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Inbox, Megaphone, MessageSquare, ChevronUp, ChevronDown, X, ArrowLeft } from 'lucide-react';
+import { Inbox, Megaphone, MessageSquare, ChevronUp, ChevronDown, X, ArrowLeft, Trash2, Maximize2 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext.jsx';
 
 export default function NotificationCenter({ isOpen, onClose }) {
   const panelRef = useRef(null);
+  const [activeModalItem, setActiveModalItem] = useState(null);
   const {
     inbox = [],
     announcements = [],
@@ -21,15 +22,30 @@ export default function NotificationCenter({ isOpen, onClose }) {
   } = useNotifications();
 
   useEffect(() => {
-    if (!isOpen) return undefined;
+    if (!isOpen) {
+      setActiveModalItem(null);
+      return undefined;
+    }
 
     const onMouseDown = e => {
+      // If modal is open, don't close drawer when clicking modal
+      if (e.target.closest('.notif-popup-backdrop') || e.target.closest('.notif-popup-modal')) {
+        return;
+      }
       if (panelRef.current && !panelRef.current.contains(e.target) && !e.target.closest('.notif-toggle-btn')) {
         onClose();
       }
     };
+
     const onKeyDown = e => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (activeModalItem) {
+          setActiveModalItem(null);
+          e.stopPropagation();
+        } else {
+          onClose();
+        }
+      }
     };
 
     document.addEventListener('mousedown', onMouseDown);
@@ -38,7 +54,7 @@ export default function NotificationCenter({ isOpen, onClose }) {
       document.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, activeModalItem]);
 
   return createPortal(
     <AnimatePresence>
@@ -140,12 +156,22 @@ export default function NotificationCenter({ isOpen, onClose }) {
                           exit={{ opacity: 0, height: 0, scale: 0.95 }}
                           transition={{ duration: 0.16 }}
                           className={`notif-item${item.read ? ' is-read' : ''}`}
-                          onClick={() => markAsRead(item.id)}
+                          onClick={() => {
+                            markAsRead(item.id);
+                            setActiveModalItem({ ...item, itemSection: 'inbox' });
+                          }}
+                          title="Click to read full message"
                         >
                           <div className="notif-item-body">
                             <span className="notif-status-tag">{item.category || 'Direct'}</span>
                             <div className="notif-item-title">{item.title}</div>
                             {item.content && <div className="notif-item-desc">{item.content}</div>}
+                            {item.content && item.content.length > 45 && (
+                              <span className="notif-read-more-hint">
+                                <span>Read full message</span>
+                                <Maximize2 size={10} />
+                              </span>
+                            )}
                           </div>
                           <button
                             type="button"
@@ -206,11 +232,21 @@ export default function NotificationCenter({ isOpen, onClose }) {
                           exit={{ opacity: 0, height: 0, scale: 0.95 }}
                           transition={{ duration: 0.16 }}
                           className="notif-item"
+                          onClick={() => {
+                            setActiveModalItem({ ...item, itemSection: 'announcement' });
+                          }}
+                          title="Click to read announcement"
                         >
                           <div className="notif-item-body">
                             <span className="notif-status-tag">{item.category || 'Cadence'}</span>
                             <div className="notif-item-title">{item.title}</div>
                             {item.content && <div className="notif-item-desc">{item.content}</div>}
+                            {item.content && item.content.length > 45 && (
+                              <span className="notif-read-more-hint">
+                                <span>Read full announcement</span>
+                                <Maximize2 size={10} />
+                              </span>
+                            )}
                           </div>
                           <button
                             type="button"
@@ -271,12 +307,22 @@ export default function NotificationCenter({ isOpen, onClose }) {
                           exit={{ opacity: 0, height: 0, scale: 0.95 }}
                           transition={{ duration: 0.16 }}
                           className={`notif-item${item.read ? ' is-read' : ''}`}
-                          onClick={() => markAsRead(item.id)}
+                          onClick={() => {
+                            markAsRead(item.id);
+                            setActiveModalItem({ ...item, itemSection: 'notification' });
+                          }}
+                          title="Click to read notification"
                         >
                           <div className="notif-item-body">
                             <span className="notif-status-tag">{item.category || 'Success'}</span>
                             <div className="notif-item-title">{item.title}</div>
                             {item.content && <div className="notif-item-desc">{item.content}</div>}
+                            {item.content && item.content.length > 45 && (
+                              <span className="notif-read-more-hint">
+                                <span>Read full notification</span>
+                                <Maximize2 size={10} />
+                              </span>
+                            )}
                           </div>
                           <button
                             type="button"
@@ -305,9 +351,99 @@ export default function NotificationCenter({ isOpen, onClose }) {
               <ChevronDown size={14} />
             </div>
           </motion.div>
+
+          {/* Big Popup Modal for Reading Full Message Details */}
+          <AnimatePresence>
+            {activeModalItem && (
+              <div
+                className="notif-popup-backdrop"
+                onClick={() => setActiveModalItem(null)}
+                role="presentation"
+              >
+                <motion.div
+                  className="notif-popup-modal"
+                  initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+                  onClick={e => e.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="notif-modal-title"
+                >
+                  {/* Modal Header */}
+                  <div className="notif-popup-header">
+                    <div className="notif-popup-badges">
+                      <span className={`notif-popup-tag notif-popup-tag-${activeModalItem.itemSection || activeModalItem.type || 'inbox'}`}>
+                        {activeModalItem.itemSection === 'announcement' || activeModalItem.type === 'announcement' ? 'Announcement' : activeModalItem.itemSection === 'notification' || activeModalItem.type === 'notification' ? 'Notification' : 'Inbox Mail'}
+                      </span>
+                      <span className="notif-popup-category">
+                        {activeModalItem.category || 'Cadence Team'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="notif-popup-close-btn"
+                      onClick={() => setActiveModalItem(null)}
+                      aria-label="Close message"
+                      title="Close"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="notif-popup-body-wrap">
+                    <h2 id="notif-modal-title" className="notif-popup-title">
+                      {activeModalItem.title}
+                    </h2>
+
+                    <div className="notif-popup-meta">
+                      <span className="notif-popup-author">
+                        From {activeModalItem.author || 'Cadence Admin'}
+                      </span>
+                      <span className="notif-popup-dot">•</span>
+                      <span className="notif-popup-time">
+                        {activeModalItem.time || 'Recently'}
+                      </span>
+                    </div>
+
+                    <div className="notif-popup-text">
+                      {activeModalItem.content || 'No content provided.'}
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="notif-popup-footer">
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      onClick={() => {
+                        clearNotification(activeModalItem.id);
+                        setActiveModalItem(null);
+                      }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--sub)' }}
+                    >
+                      <Trash2 size={14} />
+                      <span>Dismiss message</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn primary sm"
+                      onClick={() => setActiveModalItem(null)}
+                      style={{ minWidth: '90px', justifyContent: 'center' }}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>,
     document.body
   );
 }
+

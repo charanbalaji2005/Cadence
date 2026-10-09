@@ -215,8 +215,7 @@ body.typing .cp-race-top .cp-conn,body.typing .cp-race-foot{opacity:.25;transiti
 .fr-name small.on{color:var(--accent)}
 .fr-actions{display:flex;align-items:center;gap:.35rem}
 .fr-more{position:relative}
-.fr-more .icon-btn{width:2.1rem;height:2.1rem;font-size:1rem}
-.fr-menu{min-width:180px}
+.fr-menu{min-width:190px;background:var(--bg-2) !important;border:1px solid var(--glass-border) !important;box-shadow:0 14px 38px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.15) !important;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);z-index:999999 !important}
 .fr-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.25rem;padding:1.5rem 0 .75rem}
 .fr-empty p{margin:0}
 .fr-empty .btn{margin-top:.9rem}
@@ -235,6 +234,27 @@ body.typing .cp-race-top .cp-conn,body.typing .cp-race-foot{opacity:.25;transiti
 .fr-results li{display:flex;align-items:center;gap:.75rem;padding:.55rem .6rem;border-radius:12px;border:1px solid var(--hairline);background:var(--bg)}
 .cp-state{display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--sub);white-space:nowrap}
 .cp-state.ok{color:var(--accent)}
+
+/* Recommended / Suggested Friends */
+.fr-suggested-panel{margin-top:1.5rem}
+.fr-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+.fr-suggested-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.fr-suggested-card{display:flex;flex-direction:column;justify-content:space-between;padding:1rem 1.15rem;border-radius:14px;background:var(--bg);border:1px solid var(--hairline);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.fr-suggested-card:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.fr-suggested-card-top{display:flex;align-items:flex-start;gap:.85rem;margin-bottom:.9rem}
+.fr-suggested-info{display:flex;flex-direction:column;gap:.2rem;min-width:0;flex:1}
+.fr-suggested-username{font-weight:600;font-size:.95rem;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-suggested-username:hover{color:var(--accent)}
+.fr-suggested-name{font-size:.8rem;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-suggested-badges{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:.25rem}
+.srm-chip-sm{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:600;padding:.18rem .5rem;border-radius:99px;background:var(--srm-soft);color:var(--srm);border:1px solid rgba(224,76,56,.25)}
+.fr-class-chip{display:inline-flex;align-items:center;font-size:.72rem;font-weight:500;padding:.18rem .45rem;border-radius:99px;background:var(--glass);color:var(--sub);border:1px solid var(--hairline)}
+.fr-suggested-actions{display:flex;gap:.5rem;align-items:center}
+.full-width{width:100%;justify-content:center}
+.fr-filter-wrap{position:relative;display:flex;align-items:center;min-width:200px}
+.fr-filter-icon{position:absolute;left:.75rem;color:var(--sub);pointer-events:none}
+.fr-filter-input{width:100%;font-size:.85rem;padding:.45rem .75rem .45rem 2rem;border-radius:99px;border:1px solid var(--hairline);background:var(--bg);color:var(--text)}
+.fr-filter-input:focus{outline:0;border-color:var(--accent)}
 
 /* Header: nav badge and the account menu */
 .nav a{position:relative}

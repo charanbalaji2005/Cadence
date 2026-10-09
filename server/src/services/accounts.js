@@ -4,6 +4,7 @@ import { Result } from '../models/Result.js';
 import { Friendship } from '../models/Friendship.js';
 import { DailyActivity } from '../models/DailyActivity.js';
 import { LoginEvent } from '../models/LoginEvent.js';
+import { IdentityBinding } from '../models/IdentityBinding.js';
 import { hub } from '../realtime/hub.js';
 import { config } from '../config.js';
 import { audit } from './audit.js';
@@ -72,7 +73,7 @@ export async function purgeUser(target, { by, req }) {
   const snapshot = label(target);
   await Promise.all([
     Result.deleteMany({ user: id }), Session.deleteMany({ user: id }), DailyActivity.deleteMany({ user: id }),
-    Friendship.deleteMany({ $or: [{ requester: id }, { recipient: id }] }), User.deleteOne({ _id: id })
+    Friendship.deleteMany({ $or: [{ requester: id }, { recipient: id }] }), IdentityBinding.deleteMany({ user: id }), User.deleteOne({ _id: id })
   ]);
   kickSockets(id);
   await audit({ actor: by, action: 'PURGE_USER', targetType: 'user', targetId: id, targetLabel: snapshot, metadata: { permanent: true }, req });

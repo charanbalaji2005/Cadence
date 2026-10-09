@@ -43,7 +43,6 @@ async function call(user, method, path, body, { csrf = true } = {}) {
   return { status: res.status, body: await res.json().catch(() => null) };
 }
 
-/** A WebSocket test client that records every message and can wait for a specific one. */
 class Client {
   constructor(user, headers = {}) {
     this.user = user;
@@ -58,7 +57,6 @@ class Client {
     this.closed = new Promise(r => this.ws.on('close', (code) => r(code)));
     sockets.push(this);
   }
-  /** Resolves with the first message (already received or future) of this type matching pred, after index `from`. */
   next(type, pred = () => true, { from = 0, timeout = 5000 } = {}) {
     const test = m => m.type === type && pred(m);
     const found = this.msgs.slice(from).find(test);
@@ -76,7 +74,6 @@ class Client {
 
 const connect = user => new Client(user).ready();
 
-/** Numbers that agree with each other, like the real engine produces. */
 function result(wpm, elapsed, acc = 98) {
   const correct = Math.round(((wpm * 5 * elapsed) / 60) * 0.83);
   return { wpm, raw: wpm * 1.03, acc, consistency: 80, elapsed, chars: { correct, incorrect: 1, extra: 0, missed: 0 }, keyStats: { e: { n: 5, e: 0, ms: 600, mc: 4 } } };
@@ -93,7 +90,6 @@ before(async () => {
   app.use('/api/friends', friendRoutes);
   app.use('/api/competitions', competitionRoutes);
   app.use('/api/results', resultRoutes);
-  // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => res.status(500).json({ error: err.message }));
   server = http.createServer(app);
   rt = attachRealtime(server, { timing: TIMING, log: { error() {} } });

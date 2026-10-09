@@ -4,6 +4,7 @@ import { User } from '../models/User.js';
 import { Result } from '../models/Result.js';
 import { Session } from '../models/Session.js';
 import { Friendship } from '../models/Friendship.js';
+import { IdentityBinding } from '../models/IdentityBinding.js';
 import { clearSessionCookie } from '../utils/session.js';
 import { parse, profileSchema, settingsSchema } from '../utils/validate.js';
 import { track } from '../services/events.js';
@@ -46,7 +47,7 @@ router.get('/keys', (req, res) => {
 router.delete('/', async (req, res) => {
   const id = req.user._id;
   await track('ACCOUNT_DELETED', { user: req.user, metadata: { self: true } });
-  await Promise.all([Result.deleteMany({ user: id }), Session.deleteMany({ user: id }), Friendship.deleteMany({ $or: [{ requester: id }, { recipient: id }] }), User.deleteOne({ _id: id })]);
+  await Promise.all([Result.deleteMany({ user: id }), Session.deleteMany({ user: id }), Friendship.deleteMany({ $or: [{ requester: id }, { recipient: id }] }), IdentityBinding.deleteMany({ user: id }), User.deleteOne({ _id: id })]);
   clearSessionCookie(res);
   res.json({ ok: true });
 });
